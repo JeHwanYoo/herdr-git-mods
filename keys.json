@@ -1,0 +1,3 @@
+{
+  "global": { "cmd-g": "mod.open:git" }
+}

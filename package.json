@@ -1,0 +1,37 @@
+{
+  "name": "herdr-git",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "packageManager": "bun@1.4.4",
+  "engines": {
+    "bun": ">=1.4.4"
+  },
+  "scripts": {
+    "preinstall": "bun scripts/require-bun.ts",
+    "types": "bun scripts/sync-types.ts",
+    "build": "bun scripts/build.ts",
+    "build:check": "bun scripts/build.ts --check",
+    "lint": "biome check",
+    "lint:fix": "biome check --write",
+    "check-comments": "bun scripts/check-comments.ts",
+    "typecheck": "bun run types && tsc -p tsconfig.json && bun run typecheck:tests",
+    "typecheck:tests": "tsc -p tests/tsconfig.json",
+    "test": "bun test",
+    "check-mod": "herdr-app check mods/git",
+    "link": "bun run build && bun run check-mod && bun scripts/link.ts",
+    "unlink": "bun scripts/link.ts --remove",
+    "check": "bun run lint && bun run check-comments && bun run typecheck && bun test && bun run build && bun run check-mod",
+    "ci": "biome ci && bun run check-comments && bun run typecheck:tests && bun test && bun run build:check",
+    "performance": "bun scripts/performance.ts",
+    "performance:full": "bun scripts/performance-full.ts",
+    "performance:container": "bun scripts/performance-container.ts"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.4",
+    "@types/bun": "1.4.4",
+    "oxc-parser": "0.154.0",
+    "testcontainers": "^12.2.1",
+    "typescript": "7.0.2"
+  }
+}

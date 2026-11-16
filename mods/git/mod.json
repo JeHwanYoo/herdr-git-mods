@@ -1,0 +1,6 @@
+{
+  "place": "none",
+  "title": "Git",
+  "focusable": true,
+  "overlay": { "kind": "window", "width": 2, "height": 2, "frame": "none" }
+}

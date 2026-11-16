@@ -1,0 +1,8 @@
+node_modules/
+.DS_Store
+mods/*/jsconfig.json
+mods/*/*.d.ts
+.herdr-types/
+
+performance.json
+performance-full.json
