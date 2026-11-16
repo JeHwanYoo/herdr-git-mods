@@ -84,11 +84,14 @@ The gate calls production modules with real Git and validates their results. Eac
 | Repository content search            | 1000 ms    |
 | Blame for 40 visible lines           | 500 ms     |
 | Working diff preview                 | 200 ms     |
+| Changes from a shared status snapshot | 500 ms  |
 | Stage and status refresh of one file | 500 ms     |
 
 Any exceeded budget or incorrect result fails the job. `performance.json` records samples and environment; override its location with `PERF_REPORT`. CI uploads it even on failure. Compare Linux runner results separately from local OS results. Clone failures fail the job rather than skipping the gate. This benchmark modifies only its disposable clone.
 
 Linux history is deliberately excluded: 120 local commits sharing the Linux tree exercise history pagination without downloading ancestry. Blame covers only the shallow snapshot; neither scenario establishes deep-history performance. Path ranking has a separate 100 ms p95 budget because it runs during interactive search (the UI also debounces input by 120 ms). Staging cleanup runs outside the measured interval. These are component budgets: host IPC, repository facts, workspaces, QuickJS execution, layout, and drawing require separate Herdr validation before claiming end-to-end responsiveness.
+
+Changes follows the current refresh path: status is read once outside its timing, then `readChanges` receives that snapshot and checks tracked plus untracked changes. This measures the Changes read after status, not the whole refresh or concurrent Changes/Workspaces request sharing. The shallow/synthetic history scenario exercises the current history module but does not validate full-history commit-graph preparation or redundant-ref reduction; use `performance:full` for that.
 
 ### Constrained Linux runner
 
@@ -96,7 +99,13 @@ Linux history is deliberately excluded: 120 local commits sharing the Linux tree
 
 CI uses this command and uploads `performance.json`. CPU quotas bound available CPU time rather than emulate a particular processor generation; local ARM and CI x86 results are not interchangeable. This is a backend and pure UI-data performance gate, not a GPU, frame-time, or native Herdr integration benchmark.
 
+All three performance commands announce their scope and report path. Excluded setup/cleanup phases print start/end messages and elapsed time every five seconds while waiting. Each measured scenario announces its p95 and maximum budgets, then reports sample 1, every fifth sample, and sample 21. Sample progress is printed after the elapsed time is captured; no progress timer runs inside measured scenarios, including the full-history baseline and preparation-plus-first-page measurement.
+
+The container runner announces Docker build/start before waiting and streams the benchmark's stdout/stderr live through `docker exec`, rather than buffering until completion. Docker context/host selection, enforced quotas, report copying, exit-code propagation and Testcontainers cleanup remain in the launcher. Image build, clone and checkout time are not scenario latency budgets.
+
 The content-search latency case measures the first 1,000 matches for `schedule`. Search visits literal file paths in bounded batches and stops at the existing UI result cap. This does not establish the same latency for rare or absent terms, which require a full scan. Re-run the container gate in independent containers when assessing performance changes; one passing run is insufficient evidence of stability.
+
+Local verification (2026-11-16, Linux arm64 container, 2 CPU / 2 GiB): all nine component scenarios passed. The shared-status Changes read measured p95 100.8 ms and maximum 101.7 ms. The run exercised live container output, five-second clone wait updates, sample progress, report copying and container cleanup. This was one run, not a stability claim or a rerun of the full-history/native UI gates.
 
 ### Full-history Linux gate
 

@@ -1,7 +1,8 @@
 import assert from "node:assert/strict";
-import { appendFile, mkdtemp, readFile, rm } from "node:fs/promises";
+import { appendFile, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
+import { readChanges } from "../src/git/comparison.ts";
 import { readBlameRange, readDiff } from "../src/git/diff.ts";
 import { readFiles, searchContents } from "../src/git/files.ts";
 import { readHistoryPage } from "../src/git/history.ts";
@@ -9,6 +10,7 @@ import { type RunGit, readRepository } from "../src/git/repository.ts";
 import { runStaging } from "../src/git/staging.ts";
 import { rankPaths } from "../src/ui/explorer/search.ts";
 import { PathTree } from "../src/ui/explorer/tree.ts";
+import { phase, sampleProgress } from "./performance-progress.ts";
 
 const root = await mkdtemp(join(tmpdir(), "herdr-linux-perf-"));
 const repo = join(root, "linux");
@@ -55,12 +57,15 @@ async function command(args: string[], cwd = root) {
 const git: RunGit = (args) => command(args, repo);
 
 async function measure(name: string, budgetMs: number, action: () => Promise<void>, cleanup?: () => Promise<void>) {
+  console.log(`[MEASURE] ${name} · 21 samples · p95 <= ${budgetMs} ms, max <= ${budgetMs * 2} ms`);
   const samplesMs: number[] = [];
   for (let i = 0; i < 21; i++) {
     const start = performance.now();
     await action();
-    samplesMs.push(performance.now() - start);
+    const ms = performance.now() - start;
+    samplesMs.push(ms);
     await cleanup?.();
+    sampleProgress(name, i + 1, 21, ms);
   }
   const firstMs = samplesMs.shift() ?? 0;
   const sorted = [...samplesMs].sort((a, b) => a - b);
@@ -74,17 +79,20 @@ async function measure(name: string, budgetMs: number, action: () => Promise<voi
 }
 
 try {
-  console.log("Cloning Linux v6.12 (depth 1, complete working tree) into", repo);
-  const clone = await command([
-    "clone",
-    "--depth=1",
-    "--branch=v6.12",
-    "--single-branch",
-    "--no-tags",
-    "https://github.com/torvalds/linux.git",
-    repo,
-  ]);
-  assert.equal(clone.code, 0, clone.stderr);
+  console.log("Linux component gate · shallow v6.12 + synthetic history; not the full-history/UI gate.");
+  console.log(`Report: ${report}`);
+  await phase(`Clone Linux v6.12 into ${repo} (network/setup excluded from budgets)`, async () => {
+    const clone = await command([
+      "clone",
+      "--depth=1",
+      "--branch=v6.12",
+      "--single-branch",
+      "--no-tags",
+      "https://github.com/torvalds/linux.git",
+      repo,
+    ]);
+    assert.equal(clone.code, 0, clone.stderr);
+  });
   const revision = await git(["rev-parse", "HEAD"]);
   assert.equal(revision.stdout.trim(), "adc218676eef25575469234709c2d87185ca223a");
   setupMs = performance.now() - setupStarted;
@@ -101,14 +109,16 @@ try {
   await measure("interactive path search", 100, async () => {
     assert(rankPaths(paths, "kernel/sched/core.c").length > 0);
   });
-  const tree = await git(["rev-parse", "HEAD^{tree}"]);
-  let parent = revision.stdout.trim();
-  for (let i = 0; i < 120; i++) {
-    const commit = await git(["commit-tree", tree.stdout.trim(), "-p", parent, "-m", `Performance history ${i}`]);
-    assert.equal(commit.code, 0, commit.stderr);
-    parent = commit.stdout.trim();
-  }
-  assert.equal((await git(["update-ref", "refs/heads/performance-history", parent])).code, 0);
+  await phase("Create 120 synthetic history commits (fixture setup)", async () => {
+    const tree = await git(["rev-parse", "HEAD^{tree}"]);
+    let parent = revision.stdout.trim();
+    for (let i = 0; i < 120; i++) {
+      const commit = await git(["commit-tree", tree.stdout.trim(), "-p", parent, "-m", `Performance history ${i}`]);
+      assert.equal(commit.code, 0, commit.stderr);
+      parent = commit.stdout.trim();
+    }
+    assert.equal((await git(["update-ref", "refs/heads/performance-history", parent])).code, 0);
+  });
   await measure("history first page", 500, async () => {
     const page = await readHistoryPage(git, { start: null, offset: 0, count: 100 }, null);
     assert.equal(page.commits.length, 100);
@@ -122,6 +132,17 @@ try {
     assert.equal((await readBlameRange(git, "kernel/sched/core.c", 1, 40, null)).length, 40);
   });
   await appendFile(join(repo, "README"), "\nherdr-performance-fixture\n");
+  await writeFile(join(repo, "herdr-performance-untracked.txt"), "untracked performance fixture\n");
+  const repository = await readRepository(git);
+  assert.equal(repository.state, "ready");
+  if (repository.state !== "ready") throw new Error("Missing benchmark repository");
+  await measure("changes from current status", 500, async () => {
+    const changes = await readChanges(git, { kind: "last" }, repository.files);
+    assert(changes.changes.some((file) => file.path === "README" && file.section === "unstaged"));
+    assert(changes.changes.some((file) => file.path === "herdr-performance-untracked.txt" && file.status === "??"));
+    assert.equal(changes.summaries.unstaged?.files, 2);
+    assert((changes.summaries.unstaged?.additions ?? 0) >= 2);
+  });
   await measure("working diff", 200, async () => {
     const diff = await readDiff(git, { path: "README", staged: null, unstaged: "modified" }, "unstaged");
     assert(diff.text.includes("+herdr-performance-fixture"));
@@ -144,6 +165,7 @@ try {
   failure = error instanceof Error ? error.message : String(error);
   throw error;
 } finally {
+  console.log(`[REPORT] Writing ${report}`);
   await Bun.write(
     report,
     JSON.stringify(
@@ -164,6 +186,6 @@ try {
       2,
     ),
   );
-  await rm(root, { recursive: true, force: true });
+  await phase("Remove temporary Linux checkout", () => rm(root, { recursive: true, force: true }));
 }
 if (rows.some((row) => !row.passed)) process.exitCode = 1;

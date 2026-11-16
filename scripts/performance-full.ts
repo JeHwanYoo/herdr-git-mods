@@ -6,6 +6,7 @@ import { readChanges } from "../src/git/comparison.ts";
 import { type HistoryCursor, readHistoryPage } from "../src/git/history.ts";
 import { type HistoryPreparation, prepareHistory } from "../src/git/history-maintenance.ts";
 import { type RunGit, readRepository } from "../src/git/repository.ts";
+import { phase, sampleProgress } from "./performance-progress.ts";
 
 const source = process.argv[2];
 if (!source || process.argv.length !== 3) throw new Error("Usage: bun run performance:full /path/to/full/linux");
@@ -66,11 +67,14 @@ async function must(args: string[], cwd = repo): Promise<string> {
 }
 
 async function measure(name: string, budgetMs: number, action: (iteration: number) => Promise<void>) {
+  console.log(`[MEASURE] ${name} · 21 samples · p95 <= ${budgetMs} ms, max <= ${budgetMs * 2} ms`);
   const samplesMs: number[] = [];
   for (let iteration = 0; iteration < 21; iteration++) {
     const began = performance.now();
     await action(iteration);
-    samplesMs.push(performance.now() - began);
+    const ms = performance.now() - began;
+    samplesMs.push(ms);
+    sampleProgress(name, iteration + 1, 21, ms);
   }
   const firstMs = samplesMs.shift() ?? 0;
   const sorted = [...samplesMs].sort((a, b) => a - b);
@@ -82,6 +86,7 @@ async function measure(name: string, budgetMs: number, action: (iteration: numbe
 }
 
 async function historyGate(): Promise<void> {
+  console.log("[MEASURE] Unprepared first page · commit-graph disabled; no progress timer during measurement");
   const unprepared = performance.now();
   const revisions = (await must(["rev-list", "--all", "--no-walk=unsorted"])).split("\n");
   const baseline = await readHistoryPage(
@@ -91,6 +96,8 @@ async function historyGate(): Promise<void> {
   );
   unpreparedMs = performance.now() - unprepared;
   assert.equal(baseline.commits.length, 100);
+  console.log(`[DONE] Unprepared first page · ${unpreparedMs.toFixed(1)} ms`);
+  console.log("[MEASURE] Prepare commit-graph + first page · one-time cost, reported separately");
   const began = performance.now();
   preparation = await prepareHistory(git);
   preparationMs = performance.now() - began;
@@ -116,6 +123,7 @@ async function historyGate(): Promise<void> {
     cursor = page.cursor;
     paged.push(...page.commits.map((commit) => commit.sha));
   });
+  console.log(`[VERIFY] Checking ${paged.length} commits against Git for order and duplicates`);
   const expected = await must([
     "log",
     "--topo-order",
@@ -130,6 +138,7 @@ async function historyGate(): Promise<void> {
 }
 
 async function changesGate(): Promise<void> {
+  console.log("[SETUP] Create tracked/untracked changes and read one shared status snapshot");
   await appendFile(join(repo, "README"), "\nherdr-full-history-performance\n");
   await writeFile(join(repo, "herdr-performance-untracked.txt"), "untracked performance fixture\n");
   const repository = await readRepository(git);
@@ -144,17 +153,25 @@ async function changesGate(): Promise<void> {
 }
 
 try {
-  assert.equal(await must(["rev-parse", "--is-shallow-repository"], resolve(source)), "false");
-  console.log("Creating an isolated full-history Linux checkout at", repo);
-  await must(["clone", "--shared", "--no-checkout", "--quiet", resolve(source), repo], root);
-  await must(["checkout", "--quiet", "HEAD"]);
-  revision = await must(["rev-parse", "HEAD"]);
-  commits = Number(await must(["rev-list", "--count", "--all"]));
-  files = (await must(["ls-files", "-z"])).split("\0").filter(Boolean).length;
-  refs = (await must(["for-each-ref", "--format=%(refname)"])).split("\n").filter(Boolean).length;
-  assert(commits > 500_000, "Use the complete Linux history, not a shallow/synthetic fixture");
-  assert(files > 70_000, "Use a complete Linux checkout");
-  assert.equal(await must(["ls-files", "kernel/sched/core.c"]), "kernel/sched/core.c");
+  console.log("Full-history Linux gate · prepared queries; setup/first-use reported separately; no native UI timing.");
+  console.log(`Report: ${report}`);
+  await phase("Validate full-history source", async () => {
+    assert.equal(await must(["rev-parse", "--is-shallow-repository"], resolve(source)), "false");
+  });
+  await phase(`Create isolated full-history clone at ${repo}`, () =>
+    must(["clone", "--shared", "--no-checkout", "--quiet", resolve(source), repo], root),
+  );
+  await phase("Check out complete Linux working tree", () => must(["checkout", "--quiet", "HEAD"]));
+  await phase("Count and validate Linux commits, files and refs", async () => {
+    revision = await must(["rev-parse", "HEAD"]);
+    commits = Number(await must(["rev-list", "--count", "--all"]));
+    files = (await must(["ls-files", "-z"])).split("\0").filter(Boolean).length;
+    refs = (await must(["for-each-ref", "--format=%(refname)"])).split("\n").filter(Boolean).length;
+    assert(commits > 500_000, "Use the complete Linux history, not a shallow/synthetic fixture");
+    assert(files > 70_000, "Use a complete Linux checkout");
+    assert.equal(await must(["ls-files", "kernel/sched/core.c"]), "kernel/sched/core.c");
+  });
+  console.log(`[FIXTURE] ${commits} commits · ${files} files · ${refs} refs`);
   setupMs = performance.now() - setupStarted;
   await historyGate();
   await changesGate();
@@ -162,6 +179,7 @@ try {
   failure = error instanceof Error ? error.message : String(error);
   throw error;
 } finally {
+  console.log(`[REPORT] Writing ${report}`);
   await Bun.write(
     report,
     JSON.stringify(
@@ -188,6 +206,6 @@ try {
       2,
     ),
   );
-  await rm(root, { recursive: true, force: true });
+  await phase("Remove temporary Linux checkout", () => rm(root, { recursive: true, force: true }));
 }
 if (rows.some((row) => !row.passed)) process.exitCode = 1;
