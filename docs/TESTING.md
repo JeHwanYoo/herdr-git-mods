@@ -72,7 +72,7 @@ These tests stay green while the same code fails in production. Use the real dep
 
 ## Linux performance gate
 
-Run `bun run performance` locally or use the Linux performance workflow. It clones Torvalds' Linux v6.12 into an automatically removed temporary directory, verifies its commit, and checks out the complete file tree with depth 1 and no tags. Network setup is excluded from timings. This bounds CI cost; it does not model full-history traversal, every ref, or GUI rendering in Herdr.
+Run `bun run performance` locally or use the Linux performance workflow. It maintains a persistent bare Linux cache, then clones the pinned v6.12 commit into an automatically removed temporary directory with depth 1 and a complete working tree. Cache/download/checkout setup is excluded from scenario timings. This bounds CI cost; it does not model full-history traversal, every ref, or GUI rendering in Herdr.
 
 The gate calls production modules with real Git and validates their results. Each scenario records its first call separately and 20 subsequent calls. The nearest-rank p95 must meet the budget below; every call, including the first, must remain below twice that budget. The first call is not a cold-cache measurement: checkout and earlier scenarios affect filesystem caches. Thresholds are product targets, not guarantees for every machine: ordinary actions should complete within half a second, previews within 200 ms, and repository-wide search within one second.
 
@@ -93,11 +93,29 @@ Linux history is deliberately excluded: 120 local commits sharing the Linux tree
 
 Changes follows the current refresh path: status is read once outside its timing, then `readChanges` receives that snapshot and checks tracked plus untracked changes. This measures the Changes read after status, not the whole refresh or concurrent Changes/Workspaces request sharing. The shallow/synthetic history scenario exercises the current history module but does not validate full-history commit-graph preparation or redundant-ref reduction; use `performance:full` for that.
 
+### Persistent fixture cache
+
+- Missing cache: clone v6.12, fetch upstream's current HEAD, verify the pinned fixture, then publish the completed cache. A failed download or validation does not publish a partial repository.
+- Existing cache: verify its upstream and pinned revision, then fetch upstream HEAD and the fixture tag before every run. Fetch failures fail the run; an old cache is not silently accepted as current.
+- The cache tracks upstream HEAD in `refs/heads/upstream`, but the benchmark stays at v6.12 commit `adc218676eef25575469234709c2d87185ca223a`. Updating upstream must not change the benchmark dataset or budgets.
+- Default cache directory: `$XDG_CACHE_HOME/herdr-git-mods/performance`, or `~/.cache/herdr-git-mods/performance` when XDG is unset. Set `PERF_CACHE_DIR` to override it for either command.
+- Each run clones over Git's local file transport into its own temporary working tree, with no alternates or shared object files. Fixture edits and synthetic commits never modify the cache. Deleting the cache does not invalidate an already-created test checkout.
+- Cache contents survive benchmark/container cleanup. To force a fresh download, remove only `linux-v6.12.git` inside the cache directory when no cache setup is running. Interrupted first downloads may leave `.linux-download-*` directories; they are never used as a valid cache.
+
+```sh
+PERF_CACHE_DIR=/path/to/performance-cache bun run performance
+PERF_CACHE_DIR=/path/to/performance-cache bun run performance:container
+```
+
+The first download also fetches current upstream HEAD, so it is still network-bound. Later runs fetch updates and perform a local checkout, not another full GitHub clone. Checkout still reads/writes the complete Linux working tree; caching does not make setup instantaneous or establish a cold filesystem-cache measurement.
+
+Cache verification uses real Git regression tests for upstream advancement, pinned/private checkouts, failed publication and fetch failures. A local smoke run with two separate containers confirmed a cache miss followed by a hit, upstream refresh, isolation from test mutations, and host-user ownership after container removal. The Linux-sized cold/warm run was not completed: GitHub's ref endpoint stalled even for `ls-remote` over HTTP/1.1 and HTTP/2, and the clone timed out. No Linux cache speedup is claimed from that attempt.
+
 ### Constrained Linux runner
 
-`bun run performance:container` uses Testcontainers and Docker to build the Bun benchmark image, copy the current source into the container, and run the same gate with 2 CPU cores and 2 GiB of memory. It verifies cgroup v2 CPU and memory limits before measuring. The clone lives on the container filesystem, not a host bind mount. The container is stopped in a `finally` block and Testcontainers' resource reaper handles abandoned resources. Docker must be running; the launcher uses `DOCKER_HOST` when provided or resolves the active Docker context.
+`bun run performance:container` shares the same persistent host cache directory at `/performance-cache`. Git clone/fetch run inside the container, using its Git/network environment; cache writes use the host UID/GID to remain writable by ordinary local runs. Testcontainers builds the image, copies the current source, and runs the gate with 2 CPU cores and 2 GiB of memory. The mutable benchmark checkout lives on the container filesystem, separate from the cache bind mount. It verifies cgroup v2 limits before measuring and stops the container in `finally`; Testcontainers' resource reaper handles abandoned resources. Docker must be running and able to bind-mount the host cache path (Docker Desktop file sharing applies). The launcher uses `DOCKER_HOST` when provided or resolves the active Docker context.
 
-CI uses this command and uploads `performance.json`. CPU quotas bound available CPU time rather than emulate a particular processor generation; local ARM and CI x86 results are not interchangeable. This is a backend and pure UI-data performance gate, not a GPU, frame-time, or native Herdr integration benchmark.
+CI restores and saves the host cache with GitHub Actions cache, using the fixture version and runner OS as the restore prefix and a per-run key to save fetched updates. It runs the same container command and uploads `performance.json`. CPU quotas bound available CPU time rather than emulate a particular processor generation; local ARM and CI x86 results are not interchangeable. This is a backend and pure UI-data performance gate, not a GPU, frame-time, or native Herdr integration benchmark.
 
 All three performance commands announce their scope and report path. Excluded setup/cleanup phases print start/end messages and elapsed time every five seconds while waiting. Each measured scenario announces its p95 and maximum budgets, then reports sample 1, every fifth sample, and sample 21. Sample progress is printed after the elapsed time is captured; no progress timer runs inside measured scenarios, including the full-history baseline and preparation-plus-first-page measurement.
 

@@ -16,12 +16,20 @@ jobs:
   performance:
     runs-on: ubuntu-24.04
     timeout-minutes: 30
+    env:
+      PERF_CACHE_DIR: ${{ runner.temp }}/herdr-performance-cache
     steps:
       - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2.2.0
         with:
           bun-version-file: package.json
       - run: bun install --frozen-lockfile
+      - uses: actions/cache@v4
+        with:
+          path: ${{ env.PERF_CACHE_DIR }}
+          key: linux-fixture-v6.12-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: |
+            linux-fixture-v6.12-${{ runner.os }}-
       - run: bun run performance:container
         env:
           PERF_REPORT: ${{ runner.temp }}/performance.json

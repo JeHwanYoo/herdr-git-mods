@@ -10,6 +10,7 @@ import { type RunGit, readRepository } from "../src/git/repository.ts";
 import { runStaging } from "../src/git/staging.ts";
 import { rankPaths } from "../src/ui/explorer/search.ts";
 import { PathTree } from "../src/ui/explorer/tree.ts";
+import { cloneFixture, LINUX_FIXTURE, prepareFixtureCache } from "./performance-cache.ts";
 import { phase, sampleProgress } from "./performance-progress.ts";
 
 const root = await mkdtemp(join(tmpdir(), "herdr-linux-perf-"));
@@ -81,20 +82,10 @@ async function measure(name: string, budgetMs: number, action: () => Promise<voi
 try {
   console.log("Linux component gate · shallow v6.12 + synthetic history; not the full-history/UI gate.");
   console.log(`Report: ${report}`);
-  await phase(`Clone Linux v6.12 into ${repo} (network/setup excluded from budgets)`, async () => {
-    const clone = await command([
-      "clone",
-      "--depth=1",
-      "--branch=v6.12",
-      "--single-branch",
-      "--no-tags",
-      "https://github.com/torvalds/linux.git",
-      repo,
-    ]);
-    assert.equal(clone.code, 0, clone.stderr);
-  });
+  const cache = await prepareFixtureCache();
+  await cloneFixture(cache, repo);
   const revision = await git(["rev-parse", "HEAD"]);
-  assert.equal(revision.stdout.trim(), "adc218676eef25575469234709c2d87185ca223a");
+  assert.equal(revision.stdout.trim(), LINUX_FIXTURE.revision);
   setupMs = performance.now() - setupStarted;
   await measure("repository status", 500, async () => {
     const result = await readRepository(git);

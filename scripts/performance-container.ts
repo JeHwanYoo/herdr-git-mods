@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
+import { mkdir } from "node:fs/promises";
 import { resolve } from "node:path";
 import { GenericContainer } from "testcontainers";
+import { performanceCacheDirectory } from "./performance-cache.ts";
 import { phase } from "./performance-progress.ts";
 
 console.log("Linux container performance gate · 2 CPU / 2 GiB · live benchmark output");
@@ -11,16 +13,23 @@ if (!process.env.DOCKER_HOST) {
   process.env.DOCKER_HOST = context.stdout.toString().trim();
 }
 
+const cache = performanceCacheDirectory();
+await mkdir(cache, { recursive: true });
+console.log(`[CACHE] Persistent host directory: ${cache}`);
+
 const image = await phase("Build benchmark image (base image pull / apt install may take several minutes)", () =>
   GenericContainer.fromDockerfile(resolve("scripts/performance-container")).build(),
 );
 const container = await phase("Start container and copy benchmark sources", () =>
   image
     .withResourcesQuota({ cpu: 2, memory: 2 })
+    .withUser(`${process.getuid?.() ?? 0}:${process.getgid?.() ?? 0}`)
+    .withBindMounts([{ source: cache, target: "/performance-cache", mode: "rw" }])
     .withCopyDirectoriesToContainer([{ source: resolve("src"), target: "/app/src" }])
     .withCopyFilesToContainer([
       { source: resolve("scripts/performance.ts"), target: "/app/scripts/performance.ts" },
       { source: resolve("scripts/performance-progress.ts"), target: "/app/scripts/performance-progress.ts" },
+      { source: resolve("scripts/performance-cache.ts"), target: "/app/scripts/performance-cache.ts" },
     ])
     .start(),
 );
@@ -40,6 +49,8 @@ try {
       "exec",
       "--env",
       "PERF_REPORT=/tmp/performance.json",
+      "--env",
+      "PERF_CACHE_DIR=/performance-cache",
       container.getId(),
       "bun",
       "scripts/performance.ts",
