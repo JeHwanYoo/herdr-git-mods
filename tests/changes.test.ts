@@ -81,6 +81,21 @@ test("Diff Last on a clean main compares HEAD with its parent and titles the com
   expect(snapshot.titles[second]).toBe("add b.txt");
 });
 
+test.each(["main", "topic", "detached"])("Diff Last shows the root commit additions on %s", async (ref) => {
+  const { dir, run } = await repo();
+  const root = await commitFile(dir, "first file.txt", "one\ntwo\n");
+  if (ref === "topic") await must(dir, "checkout", "-b", "topic");
+  if (ref === "detached") await must(dir, "checkout", "--detach");
+  const snapshot = await readChanges(run, { kind: "last" });
+  expect(snapshot.comparison).toEqual({ kind: "commit", commit: root, parent: null });
+  expect(snapshot.changes).toEqual([{ section: "commit", status: "A", path: "first file.txt" }]);
+  expect(snapshot.summaries.commit).toEqual({ files: 1, additions: 2, deletions: 0 });
+  if (!snapshot.comparison) throw new Error("Missing root commit comparison");
+  const diff = await readTargetDiff(run, snapshot.comparison, "first file.txt");
+  expect(diff).toContain("--- /dev/null\n");
+  expect(diff).toContain("+one\n+two\n");
+});
+
 test("Diff Last on a branch without its own commits shows nothing instead of the base commit", async () => {
   const { dir, run } = await repo();
   await commitFile(dir, "a.txt", "one\n");

@@ -71,3 +71,5 @@ Animate with Herdr's native tools: `.frames()`, `svg().spin()`, `.loop()` and `.
 - Projects in Workspaces are local to this machine and stored in the mod's `localStorage`.
 - Syntax colors come from the mod's highlighter, not syntect.
 - Cherry-pick, Revert and Reset use the target picker of Checkout and Rebase (selected commit, branches, typed hash) instead of acting on the selected commit directly, so every commit action can target a branch.
+- Diff Last compares a root commit with Git's empty tree, showing all initial additions on any branch or detached HEAD. Uncommitted changes still take precedence.
+- Operation-result dialogs use `[Enter] Close`; Escape does not dismiss a completed or failed result. Escape still cancels pending forms, pickers and confirmations.

@@ -36,7 +36,7 @@ function closeButton(look: Look, overlay: Overlay): Element {
         .border(1)
         .border_color(t.rule)
         .hover((style) => style.bg(t.hover))
-        .child("[Esc] Close"),
+        .child("[Enter] Close"),
     )
     .on_click((_, cx) => {
       cx.stop_propagation();
@@ -82,6 +82,7 @@ export function showResultLines(
         .child(div().flex_none().h(look.row))
         .child(closeButton(look, overlay)),
     key: (event, cx) => {
+      if (event.keystroke === "escape") return true;
       if (event.keystroke !== "enter") return false;
       overlay.close(cx);
       return true;

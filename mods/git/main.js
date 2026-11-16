@@ -457,13 +457,13 @@ async function lastCommitTarget(git, head) {
     optionalCommit(git, "HEAD^1"),
     attempt(git, ["symbolic-ref", "--quiet", "HEAD"]).then((value) => value?.trim() || null)
   ]);
-  if (branch === "refs/heads/main")
-    return { kind: "commit", commit: head, parent: previous ?? head };
+  if (!previous || branch === "refs/heads/main")
+    return { kind: "commit", commit: head, parent: previous };
   const base = await branchStart(git, branch);
   if (!base)
     return { kind: "commit", commit: head, parent: previous };
-  const ancestor = previous ? (await git(["merge-base", "--is-ancestor", base, previous])).code === 0 : false;
-  return { kind: "commit", commit: head, parent: previous && ancestor ? previous : head };
+  const ancestor = (await git(["merge-base", "--is-ancestor", base, previous])).code === 0;
+  return { kind: "commit", commit: head, parent: ancestor ? previous : head };
 }
 async function comparisonBetween(git, base, compare) {
   const [parent, commit] = await Promise.all([resolveCommit(git, base), resolveCommit(git, compare)]);
@@ -1922,7 +1922,7 @@ function color2(look, tone) {
 }
 function closeButton(look, overlay) {
   const { t } = look;
-  return Button2.new("git-result-close").accessibility_label("Close").w_full().h(rows(look, 3)).child(h_flex4().size_full().justify_center().items_center().border(1).border_color(t.rule).hover((style) => style.bg(t.hover)).child("[Esc] Close")).on_click((_, cx) => {
+  return Button2.new("git-result-close").accessibility_label("Close").w_full().h(rows(look, 3)).child(h_flex4().size_full().justify_center().items_center().border(1).border_color(t.rule).hover((style) => style.bg(t.hover)).child("[Enter] Close")).on_click((_, cx) => {
     cx.stop_propagation();
     overlay.close(cx);
     cx.notify();
@@ -1937,6 +1937,8 @@ function showResultLines(overlay, title, success, content, cx) {
     height: height - 2,
     render: (look) => v_flex4().size_full().min_h(0).child(v_flex4().flex_1().min_h(0).overflow_hidden().children(content.map((line) => div4().flex_none().min_h(look.row).whitespace_normal().text_color(color2(look, line.tone ?? (success ? "text" : "error"))).when(!!line.bold, (el) => el.font_weight(700)).child(line.text)))).child(div4().flex_none().h(look.row)).child(closeButton(look, overlay)),
     key: (event, cx) => {
+      if (event.keystroke === "escape")
+        return true;
       if (event.keystroke !== "enter")
         return false;
       overlay.close(cx);

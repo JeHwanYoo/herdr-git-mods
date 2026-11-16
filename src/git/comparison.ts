@@ -155,11 +155,11 @@ async function lastCommitTarget(git: RunGit, head: string): Promise<DiffTarget> 
     optionalCommit(git, "HEAD^1"),
     attempt(git, ["symbolic-ref", "--quiet", "HEAD"]).then((value) => value?.trim() || null),
   ]);
-  if (branch === "refs/heads/main") return { kind: "commit", commit: head, parent: previous ?? head };
+  if (!previous || branch === "refs/heads/main") return { kind: "commit", commit: head, parent: previous };
   const base = await branchStart(git, branch);
   if (!base) return { kind: "commit", commit: head, parent: previous };
-  const ancestor = previous ? (await git(["merge-base", "--is-ancestor", base, previous])).code === 0 : false;
-  return { kind: "commit", commit: head, parent: previous && ancestor ? previous : head };
+  const ancestor = (await git(["merge-base", "--is-ancestor", base, previous])).code === 0;
+  return { kind: "commit", commit: head, parent: ancestor ? previous : head };
 }
 
 async function comparisonBetween(git: RunGit, base: string, compare: string): Promise<CommitTarget> {
