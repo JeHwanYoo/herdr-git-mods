@@ -6,3 +6,5 @@ mods/*/*.d.ts
 
 performance.json
 performance-full.json
+
+graphify-out/
