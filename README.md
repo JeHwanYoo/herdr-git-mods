@@ -1,10 +1,14 @@
 # Herdr Git Mods
 
-A Git client for Herdr App.
+Essential Git, in one pane. No extra setup, no overlays covering your Herdr.
 
-Runs in the [Herdr App](https://herdr.dev) with the interface of the [herdr-git](https://github.com/JeHwanYoo/herdr-git) TUI plugin.
+A Git client for the [Herdr App](https://herdr.dev), and the next version of the [herdr-git](https://github.com/JeHwanYoo/herdr-git) TUI plugin.
 
-Everything Git, in one pane. No extra setup, no overlays covering your Herdr.
+## Principles
+
+- **Blazing fast.** Performance comes first, so every view opens and responds without a wait.
+- **Simple and intuitive.** You can find what you need without reading a manual.
+- **Made for Git, not agents.** Every feature serves your Git workflow, with no agent features to get in the way.
 
 ## Install
 
@@ -19,6 +23,19 @@ Read ~/.config/herdr-app/AGENTS.md, then add this mod: github.com/JeHwanYoo/herd
 Focus a terminal in a Git repository and press ⌘G to open Git on the right of the tab. Press ⌘G again to close it.
 
 ## Features
+
+<table>
+  <tr>
+    <td width="33%" align="center"><a href="docs/images/graph.png"><img src="docs/images/graph.png" alt="Commit graph"></a><br><sub>Commit graph</sub></td>
+    <td width="33%" align="center"><a href="docs/images/compare.png"><img src="docs/images/compare.png" alt="Side-by-side compare"></a><br><sub>Side-by-side compare</sub></td>
+    <td width="33%" align="center"><a href="docs/images/files.png"><img src="docs/images/files.png" alt="Files, blame &amp; line history"></a><br><sub>Files, blame &amp; line history</sub></td>
+  </tr>
+  <tr>
+    <td width="33%" align="center"><a href="docs/images/interactive-rebase.png"><img src="docs/images/interactive-rebase.png" alt="Interactive rebase"></a><br><sub>Interactive rebase</sub></td>
+    <td width="33%" align="center"><a href="docs/images/branches.png"><img src="docs/images/branches.png" alt="Branches"></a><br><sub>Branches</sub></td>
+    <td width="33%" align="center"><a href="docs/images/commands.png"><img src="docs/images/commands.png" alt="Command palette"></a><br><sub>Command palette</sub></td>
+  </tr>
+</table>
 
 | Feature                     | What you can do                                                                                                                                    |
 | --------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------- |
