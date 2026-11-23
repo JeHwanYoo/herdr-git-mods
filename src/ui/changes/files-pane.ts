@@ -477,8 +477,8 @@ export class FilesPane {
     options: { focused: boolean; hints: boolean; repository: boolean; owner: string | null },
   ): Element {
     const { t } = look;
-    this.rowHeight = look.row;
-    this.cellWidth = look.cell;
+    this.rowHeight = look.screenRow;
+    this.cellWidth = look.screenCell;
     this.widestCache = this.widest(look);
     this.horizontal = Math.min(this.horizontal, this.maxHorizontal());
     this.scroll = viewportOffset(this.scroll, this.selected, this.rows.length, this.height);
@@ -509,8 +509,8 @@ export class FilesPane {
       .items_stretch()
       .track_focus(this.handle)
       .on_size_change((size, cx) => {
-        const height = Math.max(1, Math.floor(size.height / look.row));
-        const width = Math.floor(size.width / look.cell);
+        const height = Math.max(1, Math.floor(size.height / look.screenRow));
+        const width = Math.floor(size.width / look.screenCell);
         if (height === this.height && width === this.width) return;
         this.height = height;
         this.width = width;

@@ -499,7 +499,7 @@ export class ListViewport {
       .min_w(0)
       .items_stretch()
       .on_size_change((size, cx) => {
-        const height = Math.max(1, Math.floor(size.height / look.row));
+        const height = Math.max(1, Math.floor(size.height / look.screenRow));
         if (height === this.height) return;
         this.height = height;
         cx.notify();

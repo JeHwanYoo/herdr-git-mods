@@ -853,7 +853,7 @@ export class ChangesTab implements TabView {
       })
       .on_mouse_move((event, cx) => {
         if (this.divider === null) return;
-        this.resize(Math.round(event.local_position.x / look.cell));
+        this.resize(Math.round(event.local_position.x / look.screenCell));
         cx.notify();
       });
     if (!size.wide) {

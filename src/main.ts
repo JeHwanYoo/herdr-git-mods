@@ -342,8 +342,8 @@ class Session {
           .min_w(0)
           .overflow_hidden()
           .on_size_change((size, cx) => {
-            const cols = Math.floor(size.width / view.cell);
-            const rows = Math.floor(size.height / view.row);
+            const cols = Math.floor(size.width / view.screenCell);
+            const rows = Math.floor(size.height / view.screenRow);
             if (cols === this.body.cols && rows === this.body.rows) return;
             this.body = { ...size, cols, rows, wide: cols >= WIDE_COLUMNS };
             cx.notify();

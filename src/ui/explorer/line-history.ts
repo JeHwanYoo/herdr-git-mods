@@ -186,7 +186,7 @@ class LineHistoryDialog {
       .min_h(0)
       .overflow_hidden()
       .on_size_change((size, cx) => {
-        const height = Math.max(1, Math.floor(size.height / look.row));
+        const height = Math.max(1, Math.floor(size.height / look.screenRow));
         if (height === this.height) return;
         this.height = height;
         this.select(this.selected);

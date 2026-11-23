@@ -874,8 +874,8 @@ export class GraphTab implements TabView {
       .min_w(0)
       .items_stretch()
       .on_size_change((size, cx) => {
-        const height = Math.max(0, Math.floor(size.height / look.row));
-        const width = Math.max(0, Math.floor(size.width / look.cell));
+        const height = Math.max(0, Math.floor(size.height / look.screenRow));
+        const width = Math.max(0, Math.floor(size.width / look.screenCell));
         if (height === this.height && width === this.width) return;
         this.height = height;
         this.width = width;

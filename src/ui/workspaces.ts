@@ -651,8 +651,8 @@ export class WorkspacesBox {
       .min_w(0)
       .overflow_hidden()
       .on_size_change((size, cx) => {
-        const rows = Math.max(1, Math.floor(size.height / look.row));
-        const width = Math.max(1, Math.floor(size.width / look.cell));
+        const rows = Math.max(1, Math.floor(size.height / look.screenRow));
+        const width = Math.max(1, Math.floor(size.width / look.screenCell));
         if (rows === this.height && width === this.width) return;
         this.height = rows;
         this.width = width;

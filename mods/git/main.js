@@ -929,12 +929,17 @@ function number(value, fallback) {
 function look() {
   const font = setting("font_family", "font");
   const size = number(setting("font_size"), FALLBACK_SIZE);
+  const zoom = number(setting("zoom"), 1);
+  const cell = size * CELL_RATIO * number(setting("terminal_cell_width"), 1);
+  const row = Math.round(size * ROW_RATIO * number(setting("terminal_line_height"), 1));
   return {
     t: palette(),
     font: typeof font === "string" && font ? font : FALLBACK_FONT,
     size,
-    cell: size * CELL_RATIO * number(setting("terminal_cell_width"), 1),
-    row: Math.round(size * ROW_RATIO * number(setting("terminal_line_height"), 1))
+    cell,
+    row,
+    screenCell: cell * zoom,
+    screenRow: row * zoom
   };
 }
 function cols(look, count) {
@@ -1215,7 +1220,7 @@ class ListViewport {
       offset: this.scroll
     });
     return h_flex().id(this.id).flex_1().min_h(0).min_w(0).items_stretch().on_size_change((size, cx) => {
-      const height = Math.max(1, Math.floor(size.height / look.row));
+      const height = Math.max(1, Math.floor(size.height / look.screenRow));
       if (height === this.height)
         return;
       this.height = height;
@@ -1859,8 +1864,8 @@ class FilesPane {
   }
   render(look, options) {
     const { t } = look;
-    this.rowHeight = look.row;
-    this.cellWidth = look.cell;
+    this.rowHeight = look.screenRow;
+    this.cellWidth = look.screenCell;
     this.widestCache = this.widest(look);
     this.horizontal = Math.min(this.horizontal, this.maxHorizontal());
     this.scroll = viewportOffset(this.scroll, this.selected, this.rows.length, this.height);
@@ -1881,8 +1886,8 @@ class FilesPane {
       offset: this.scroll
     });
     const body = h_flex3().id("git-changes-tree").flex_1().min_h(0).min_w(0).items_stretch().track_focus(this.handle).on_size_change((size, cx) => {
-      const height = Math.max(1, Math.floor(size.height / look.row));
-      const width = Math.floor(size.width / look.cell);
+      const height = Math.max(1, Math.floor(size.height / look.screenRow));
+      const width = Math.floor(size.width / look.screenCell);
       if (height === this.height && width === this.width)
         return;
       this.height = height;
@@ -2602,7 +2607,7 @@ function rowElement(look, segments, background) {
 function rowAt(look, spec, y) {
   if (y === undefined)
     return null;
-  const row = spec.scroll + Math.floor(y / look.row);
+  const row = spec.scroll + Math.floor(y / look.screenRow);
   return row >= 0 && row < spec.length ? row : null;
 }
 function selectionHint(look, id, spec) {
@@ -2628,7 +2633,7 @@ function scrollTrack(look, id, bar, vertical, onPosition) {
     const bounds = event.bounds;
     if (!local || !bounds)
       return null;
-    const size = vertical ? bounds.height - look.row : bounds.width - look.cell;
+    const size = vertical ? bounds.height - look.screenRow : bounds.width - look.screenCell;
     return size <= 0 ? 0 : Math.max(0, Math.min(1, (vertical ? local.y : local.x) / size));
   };
   return div6().id(id).flex_none().when(vertical, (el) => el.h_full()).when(!vertical, (el) => el.w_full()).child(bar).on_mouse_down("left", (event, cx) => {
@@ -2667,7 +2672,7 @@ function renderColumn(look, spec) {
     }
     list.child(rowElement(look, sliceSegments(segments, spec.horizontal, width), background));
   }
-  const area = v_flex6().id(`${spec.id}-rows`).relative().flex_1().min_w(0).min_h(0).overflow_hidden().on_size_change((size, cx) => spec.onSize({ rows: Math.max(1, Math.floor(size.height / look.row)), cols: Math.floor(size.width / look.cell) }, cx)).on_scroll_wheel((event, cx) => spec.onWheel(event, cx)).on_mouse_down("left", (event, cx) => spec.onDown(rowAt(look, spec, event.local_position?.y), event, cx)).on_mouse_up("left", (_, cx) => spec.onUp(cx)).on_mouse_move((event, cx) => spec.onMove(rowAt(look, spec, event.local_position.y), cx)).child(list);
+  const area = v_flex6().id(`${spec.id}-rows`).relative().flex_1().min_w(0).min_h(0).overflow_hidden().on_size_change((size, cx) => spec.onSize({ rows: Math.max(1, Math.floor(size.height / look.screenRow)), cols: Math.floor(size.width / look.screenCell) }, cx)).on_scroll_wheel((event, cx) => spec.onWheel(event, cx)).on_mouse_down("left", (event, cx) => spec.onDown(rowAt(look, spec, event.local_position?.y), event, cx)).on_mouse_up("left", (_, cx) => spec.onUp(cx)).on_mouse_move((event, cx) => spec.onMove(rowAt(look, spec, event.local_position.y), cx)).child(list);
   const hint = selectionHint(look, spec.id, spec);
   if (hint)
     area.child(hint);
@@ -3851,7 +3856,7 @@ class LineHistoryDialog {
   list(look, width) {
     const { t } = look;
     const area = v_flex7().id("git-line-history-list").flex_1().min_h(0).overflow_hidden().on_size_change((size, cx) => {
-      const height = Math.max(1, Math.floor(size.height / look.row));
+      const height = Math.max(1, Math.floor(size.height / look.screenRow));
       if (height === this.height)
         return;
       this.height = height;
@@ -4634,7 +4639,7 @@ ${paths.slice(0, 5).join(`
     }).on_mouse_move((event, cx) => {
       if (this.divider === null)
         return;
-      this.resize(Math.round(event.local_position.x / look.cell));
+      this.resize(Math.round(event.local_position.x / look.screenCell));
       cx.notify();
     });
     if (!size.wide) {
@@ -5880,7 +5885,7 @@ class Shell {
     if (error)
       content.child(separator).child(div11().text_color(t.error).child(`Error: ${error}`));
     return h_flex12().id("git-status-bar").flex_none().w_full().h(look.row).overflow_hidden().bg(t.inert).text_color(t.text).on_size_change((size, cx) => {
-      const columns = Math.floor(size.width / look.cell);
+      const columns = Math.floor(size.width / look.screenCell);
       if (columns === this.statusCols)
         return;
       this.statusCols = columns;
@@ -8228,7 +8233,7 @@ class FilesTab {
       this.setPane("explorer");
       cx.notify();
     }).on_size_change((size, cx) => {
-      const columns = Math.floor(size.width / look.cell);
+      const columns = Math.floor(size.width / look.screenCell);
       if (columns === this.treeColumns)
         return;
       this.treeColumns = columns;
@@ -8309,7 +8314,7 @@ class FilesTab {
     });
     const bar = scrollbar(look, { axis: "vertical", total: all.length, visible: filter.height, offset });
     return h_flex15().id("git-files-matches").flex_1().min_h(0).min_w(0).items_stretch().on_size_change((size, cx) => {
-      const height = Math.max(1, Math.floor(size.height / look.row));
+      const height = Math.max(1, Math.floor(size.height / look.screenRow));
       if (height === filter.height)
         return;
       filter.height = height;
@@ -8956,7 +8961,7 @@ class Inspect {
     for (const [offset, line] of lines.slice(this.scroll, this.scroll + Math.max(1, this.height)).entries())
       body.child(this.detailRow(look, line, this.scroll + offset, onFocus));
     return box(look, { id: "git-commit-details", title: this.title(look), focused: this.focus === "details" }, h_flex17().id("git-commit-details-body").flex_1().min_h(0).min_w(0).items_stretch().on_size_change((size, cx) => {
-      const height = Math.max(1, Math.floor(size.height / look.row));
+      const height = Math.max(1, Math.floor(size.height / look.screenRow));
       if (height === this.height)
         return;
       this.height = height;
@@ -9974,8 +9979,8 @@ class GraphTab {
       offset: this.state.scroll
     });
     return h_flex19().id("git-commits").flex_1().min_h(0).min_w(0).items_stretch().on_size_change((size, cx) => {
-      const height = Math.max(0, Math.floor(size.height / look.row));
-      const width = Math.max(0, Math.floor(size.width / look.cell));
+      const height = Math.max(0, Math.floor(size.height / look.screenRow));
+      const width = Math.max(0, Math.floor(size.width / look.screenCell));
       if (height === this.height && width === this.width)
         return;
       this.height = height;
@@ -11153,8 +11158,8 @@ class WorkspacesBox {
     const visible = placed.filter((entry) => entry.top + entry.height > this.scroll && entry.top < this.scroll + height);
     this.page = Math.max(1, visible.length);
     const body = div24().id("git-workspaces-list").relative().flex_1().min_h(0).min_w(0).overflow_hidden().on_size_change((size, cx) => {
-      const rows = Math.max(1, Math.floor(size.height / look.row));
-      const width = Math.max(1, Math.floor(size.width / look.cell));
+      const rows = Math.max(1, Math.floor(size.height / look.screenRow));
+      const width = Math.max(1, Math.floor(size.width / look.screenCell));
       if (rows === this.height && width === this.width)
         return;
       this.height = rows;
@@ -11466,8 +11471,8 @@ class Session {
     const repository = this.repository;
     const path = repository?.state === "ready" ? repository.root : this.source.current()?.cwd ?? "";
     const root = v_flex23().id("git").relative().size_full().min_h(0).bg(view.t.background).text_color(view.t.text).font_family(view.font).text_size(view.size).line_height(`${view.row}px`).child(this.shell.header(view)).child(v_flex23().id("git-body").flex_1().min_h(0).min_w(0).overflow_hidden().on_size_change((size, cx) => {
-      const cols = Math.floor(size.width / view.cell);
-      const rows = Math.floor(size.height / view.row);
+      const cols = Math.floor(size.width / view.screenCell);
+      const rows = Math.floor(size.height / view.screenRow);
       if (cols === this.body.cols && rows === this.body.rows)
         return;
       this.body = { ...size, cols, rows, wide: cols >= WIDE_COLUMNS };

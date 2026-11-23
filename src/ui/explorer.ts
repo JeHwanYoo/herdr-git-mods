@@ -637,7 +637,7 @@ export class FilesTab implements TabView {
           cx.notify();
         })
         .on_size_change((size, cx) => {
-          const columns = Math.floor(size.width / look.cell);
+          const columns = Math.floor(size.width / look.screenCell);
           if (columns === this.treeColumns) return;
           this.treeColumns = columns;
           cx.notify();
@@ -757,7 +757,7 @@ export class FilesTab implements TabView {
       .min_w(0)
       .items_stretch()
       .on_size_change((size, cx) => {
-        const height = Math.max(1, Math.floor(size.height / look.row));
+        const height = Math.max(1, Math.floor(size.height / look.screenRow));
         if (height === filter.height) return;
         filter.height = height;
         cx.notify();

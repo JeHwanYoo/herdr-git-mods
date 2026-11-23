@@ -215,7 +215,7 @@ interface ColumnSpec {
 
 function rowAt(look: Look, spec: ColumnSpec, y: number | undefined): number | null {
   if (y === undefined) return null;
-  const row = spec.scroll + Math.floor(y / look.row);
+  const row = spec.scroll + Math.floor(y / look.screenRow);
   return row >= 0 && row < spec.length ? row : null;
 }
 
@@ -254,7 +254,7 @@ function scrollTrack(
     const local = event.local_position;
     const bounds = event.bounds;
     if (!local || !bounds) return null;
-    const size = vertical ? bounds.height - look.row : bounds.width - look.cell;
+    const size = vertical ? bounds.height - look.screenRow : bounds.width - look.screenCell;
     return size <= 0 ? 0 : Math.max(0, Math.min(1, (vertical ? local.y : local.x) / size));
   };
   return div()
@@ -307,7 +307,7 @@ function renderColumn(look: Look, spec: ColumnSpec): Element {
     .overflow_hidden()
     .on_size_change((size, cx) =>
       spec.onSize(
-        { rows: Math.max(1, Math.floor(size.height / look.row)), cols: Math.floor(size.width / look.cell) },
+        { rows: Math.max(1, Math.floor(size.height / look.screenRow)), cols: Math.floor(size.width / look.screenCell) },
         cx,
       ),
     )

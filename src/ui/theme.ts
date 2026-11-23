@@ -40,6 +40,8 @@ export interface Look {
   size: number;
   cell: number;
   row: number;
+  screenCell: number;
+  screenRow: number;
 }
 
 const MISSING: Color = "#00000000";
@@ -133,12 +135,17 @@ function number(value: unknown, fallback: number): number {
 export function look(): Look {
   const font = setting("font_family", "font");
   const size = number(setting("font_size"), FALLBACK_SIZE);
+  const zoom = number(setting("zoom"), 1);
+  const cell = size * CELL_RATIO * number(setting("terminal_cell_width"), 1);
+  const row = Math.round(size * ROW_RATIO * number(setting("terminal_line_height"), 1));
   return {
     t: palette(),
     font: typeof font === "string" && font ? font : FALLBACK_FONT,
     size,
-    cell: size * CELL_RATIO * number(setting("terminal_cell_width"), 1),
-    row: Math.round(size * ROW_RATIO * number(setting("terminal_line_height"), 1)),
+    cell,
+    row,
+    screenCell: cell * zoom,
+    screenRow: row * zoom,
   };
 }
 

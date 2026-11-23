@@ -399,7 +399,7 @@ export class Shell {
       .bg(t.inert)
       .text_color(t.text)
       .on_size_change((size, cx) => {
-        const columns = Math.floor(size.width / look.cell);
+        const columns = Math.floor(size.width / look.screenCell);
         if (columns === this.statusCols) return;
         this.statusCols = columns;
         cx.notify();
