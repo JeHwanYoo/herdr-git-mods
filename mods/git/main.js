@@ -479,7 +479,8 @@ function targetArgs(target, empty) {
   return empty().then((tree) => [tree, target.commit]);
 }
 async function untrackedSummary(git, paths) {
-  const parts = await mapGit(paths, async (path) => parseNumstat(await difference(git, [
+  const files = paths.filter((path) => !path.endsWith("/"));
+  const parts = await mapGit(files, async (path) => parseNumstat(await difference(git, [
     ...READ2,
     "diff",
     "--no-ext-diff",

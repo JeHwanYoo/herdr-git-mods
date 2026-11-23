@@ -175,7 +175,8 @@ function targetArgs(target: DiffTarget, empty: () => Promise<string>): Promise<s
 }
 
 async function untrackedSummary(git: RunGit, paths: readonly string[]): Promise<DiffSummary> {
-  const parts = await mapGit(paths, async (path) =>
+  const files = paths.filter((path) => !path.endsWith("/"));
+  const parts = await mapGit(files, async (path) =>
     parseNumstat(
       await difference(git, [
         ...READ,

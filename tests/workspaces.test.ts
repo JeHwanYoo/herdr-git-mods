@@ -103,6 +103,16 @@ test("upstream tracking reports ahead and behind counts", async () => {
   expect(status.branch).toEqual({ checkedOut: "main", upstream: "origin/main", ahead: 1, behind: 2 });
 });
 
+test("a project with a worktree inside its own folder lists that worktree", async () => {
+  const root = await project();
+  await must(root, "worktree", "add", "-b", "nested", join(root, ".worktrees", "nested"));
+
+  const status = await inspectProject(gitAt, root, [], null);
+
+  expect(status.worktrees.map((worktree) => worktree.path)).toEqual([join(root, ".worktrees", "nested")]);
+  expect(status.primary.overview).toEqual({ changedPaths: 1, additions: 0, deletions: 0 });
+});
+
 test("a project resolves from a linked worktree and lists its worktrees with their own changes", async () => {
   const root = await project();
   const linked = join(root, "..", "feature-a");
