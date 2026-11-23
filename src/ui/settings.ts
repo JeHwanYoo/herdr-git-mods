@@ -5,7 +5,7 @@ import { type TabView, VERSION } from "./shell.ts";
 import type { Look } from "./theme.ts";
 import { box, padToWidth } from "./widgets.ts";
 
-const LABEL_WIDTH = 20;
+const LABEL_WIDTH = 24;
 
 interface SettingRow {
   id: string;

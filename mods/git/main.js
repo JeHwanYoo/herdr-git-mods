@@ -10250,7 +10250,7 @@ class Overlay {
 import { h_flex as h_flex21, v_flex as v_flex21 } from "gpui-base";
 import { div as div22 } from "gpui-kit";
 import { run as run5 } from "herdr";
-var LABEL_WIDTH = 20;
+var LABEL_WIDTH = 24;
 
 class SettingsTab {
   id = "settings";
