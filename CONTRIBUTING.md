@@ -41,7 +41,7 @@ The mod is copied to `~/.config/herdr-app/mods/git/`, or `$HERDR_APP_HOME/mods/g
 
 Keep each pull request focused on one problem. Read [AGENTS.md](AGENTS.md) for the file index, then follow the conventions it lists:
 
-- [CODING_STANDARDS.md](docs/CODING_STANDARDS.md): no comments, deep modules
+- [CODING_STANDARDS.md](docs/CODING_STANDARDS.md): no comments
 - [TESTING.md](docs/TESTING.md): what a test must prove, and the tests to avoid
 - [DESIGN.md](docs/DESIGN.md): interface parity with herdr-git: cell grid, colors, and screen layout
 - [ARCHITECTURE.md](docs/ARCHITECTURE.md): source layout and allowed module dependencies

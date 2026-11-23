@@ -100,7 +100,7 @@ These follow from how Herdr runs mods. `~/.config/herdr-app/AGENTS.md` and the `
 ## Adding features
 
 - Add behavior to the module responsible for that data or operation. Create a sibling module when the behavior falls outside every existing module's responsibility.
-- A feature may stay in one file. Split a module out when a group of functions and types can hide its details behind a small interface ([deep modules](CODING_STANDARDS.md#deep-modules)).
+- A feature may stay in one file.
 - Extract shared code only when existing callers need the same behavior. Code that looks alike does not need an abstraction.
 - Keep logic that tests must reach out of `main.ts`, in modules that do not import Herdr.
 - Work within these boundaries where you can. If a feature needs a new module or dependency, update this document in the same change and explain why in the pull request.

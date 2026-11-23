@@ -7,7 +7,7 @@
 | [README.md](README.md)                               | Install and current features, for people using the mod                                          |
 | [RECIPE.md](RECIPE.md)                               | The brief Herdr agents build the mod from; listed on herdr.dev/mods                             |
 | [CONTRIBUTING.md](CONTRIBUTING.md)                   | Development setup, checks, and pull requests                                                    |
-| [docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md) | No comments; deep modules                                                                       |
+| [docs/CODING_STANDARDS.md](docs/CODING_STANDARDS.md) | No comments                                                                                     |
 | [docs/TESTING.md](docs/TESTING.md)                   | What tests prove and which tests to avoid                                                       |
 | [docs/DESIGN.md](docs/DESIGN.md)                     | Interface parity with herdr-git: cell grid, colors, screen layout, and known differences        |
 | [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)         | Source layout, module dependencies, and Herdr runtime rules                                     |
