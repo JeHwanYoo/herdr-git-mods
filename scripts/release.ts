@@ -1,13 +1,23 @@
+import { mkdtemp, rm } from "node:fs/promises";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { BUNDLE_ASSET, BUNDLE_LIMIT, bundleHeader } from "../src/version.ts";
 import { run } from "./cli.ts";
 
 const FIRST_VERSION = "0.1.0";
 const MAIN = "refs/heads/main";
-const VERSION_SOURCE = "src/ui/shell.ts";
-const BUNDLE = "mods/git/main.js";
+const VERSION_SOURCE = "src/version.ts";
+const BUNDLE = `mods/git/${BUNDLE_ASSET}`;
 const SEMVER_TAG = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const VERSION_LINE = /^export const VERSION = "(\d+\.\d+\.\d+)";$/m;
 
 type Bump = "patch" | "minor" | "major";
+
+interface ReleaseInfo {
+  body: string;
+  isDraft: boolean;
+  isPrerelease: boolean;
+}
 
 function capture(args: string[]) {
   return Bun.spawnSync(args, { stdout: "pipe", stderr: "pipe" });
@@ -37,33 +47,98 @@ function bumpVersion(tag: string, bump: Bump): string {
   }
 }
 
-function published(repo: string, tag: string): boolean {
-  const result = capture(["gh", "release", "view", tag, "--repo", repo, "--json", "isDraft,isPrerelease"]);
-  if (result.exitCode !== 0) return false;
-  const release = JSON.parse(result.stdout.toString()) as { isDraft: boolean; isPrerelease: boolean };
-  if (release.isDraft || release.isPrerelease) throw new Error(`${tag} already has a draft or prerelease on GitHub.`);
-  return true;
+function releaseInfo(repo: string, tag: string): ReleaseInfo | null {
+  const result = capture(["gh", "release", "view", tag, "--repo", repo, "--json", "body,isDraft,isPrerelease"]);
+  if (result.exitCode !== 0) return null;
+  const release: unknown = JSON.parse(result.stdout.toString());
+  if (
+    typeof release !== "object" ||
+    release === null ||
+    !("body" in release) ||
+    typeof release.body !== "string" ||
+    !("isDraft" in release) ||
+    typeof release.isDraft !== "boolean" ||
+    !("isPrerelease" in release) ||
+    typeof release.isPrerelease !== "boolean"
+  ) {
+    throw new Error(`GitHub returned unexpected release metadata for ${tag}.`);
+  }
+  return { body: release.body, isDraft: release.isDraft, isPrerelease: release.isPrerelease };
 }
 
-function publish(repo: string, tag: string): void {
-  checked("gh", "release", "create", tag, "--repo", repo, "--title", tag, "--verify-tag", "--generate-notes");
+async function publish(repo: string, tag: string, marker: string, draft?: ReleaseInfo): Promise<void> {
+  const note = `<!-- ${marker} -->`;
+  if (draft && !draft.body.includes(note)) {
+    throw new Error(`Cannot resume a release draft for ${tag} created outside this run.`);
+  }
+  const bundle = capture(["git", "show", `${tag}:${BUNDLE}`]);
+  if (bundle.exitCode !== 0) throw new Error(bundle.stderr.toString().trim());
+  const directory = await mkdtemp(join(tmpdir(), "herdr-git-release-"));
+  try {
+    const asset = join(directory, BUNDLE_ASSET);
+    await Bun.write(asset, bundle.stdout);
+    if (draft) {
+      checked("gh", "release", "upload", tag, "--repo", repo, "--clobber", asset);
+      checked("gh", "release", "edit", tag, "--repo", repo, "--draft=false", "--latest");
+    } else {
+      checked(
+        "gh",
+        "release",
+        "create",
+        tag,
+        "--repo",
+        repo,
+        "--title",
+        tag,
+        "--verify-tag",
+        "--generate-notes",
+        "--notes",
+        note,
+        "--latest",
+        asset,
+      );
+    }
+  } finally {
+    await rm(directory, { recursive: true, force: true });
+  }
 }
 
-function resumeRelease(repo: string, tag: string, latest: string | undefined, sha: string, main: string): void {
-  if (published(repo, tag)) return;
+async function resumeRelease(
+  repo: string,
+  tag: string,
+  latest: string | undefined,
+  sha: string,
+  main: string,
+  marker: string,
+): Promise<void> {
+  const release = releaseInfo(repo, tag);
+  if (release && !release.isDraft && !release.isPrerelease) return;
+  if (release?.isPrerelease) throw new Error(`${tag} is already published as a prerelease.`);
   if (tag !== latest || git("rev-parse", `${tag}^{commit}^`) !== sha) {
     throw new Error(`Cannot resume publication of ${tag} from this run.`);
   }
   git("merge-base", "--is-ancestor", `${tag}^{commit}`, main);
-  publish(repo, tag);
+  await publish(repo, tag, marker, release ?? undefined);
 }
 
-async function verifyFiles(): Promise<void> {
+async function verifyFiles(version: string): Promise<void> {
   for (const path of ["RECIPE.md", "preview.png", "keys.json", BUNDLE, "mods/git/mod.json", "mods/git/git.svg"]) {
     const file = Bun.file(path);
     if (!(await file.exists()) || !file.size) throw new Error(`Missing or empty release file: ${path}`);
   }
   if (Bun.file("RECIPE.md").size > 64 * 1024) throw new Error("RECIPE.md exceeds the gallery's 64 KB limit.");
+  const bundle = Bun.file(BUNDLE);
+  if (bundle.size > BUNDLE_LIMIT || !(await bundle.text()).startsWith(bundleHeader(version))) {
+    throw new Error(`${BUNDLE} must fit Herdr's file read limit and identify version v${version}.`);
+  }
+}
+
+function verifyPreviousRelease(repo: string, tag: string, main: string): void {
+  git("merge-base", "--is-ancestor", `${tag}^{commit}`, main);
+  const release = releaseInfo(repo, tag);
+  if (!release || release.isDraft || release.isPrerelease) {
+    throw new Error(`${tag} has no published stable release. Re-run its original Release job.`);
+  }
 }
 
 await run(async () => {
@@ -80,7 +155,7 @@ await run(async () => {
   const latest = tags[0];
   const retry = tags.find((tag) => git("for-each-ref", "--format=%(contents:subject)", `refs/tags/${tag}`) === marker);
   if (retry) {
-    resumeRelease(repo, retry, latest, sha, main);
+    await resumeRelease(repo, retry, latest, sha, main, marker);
     return;
   }
 
@@ -88,11 +163,7 @@ await run(async () => {
     throw new Error("main changed after dispatch. Start a new Release run from main.");
   }
   if (git("status", "--porcelain")) throw new Error("The release checkout must be clean.");
-  if (latest) {
-    git("merge-base", "--is-ancestor", `${latest}^{commit}`, main);
-    if (!published(repo, latest))
-      throw new Error(`${latest} has no published release. Re-run its original Release job.`);
-  }
+  if (latest) verifyPreviousRelease(repo, latest, main);
 
   const source = await Bun.file(VERSION_SOURCE).text();
   const current = latest?.slice(1) ?? FIRST_VERSION;
@@ -103,7 +174,7 @@ await run(async () => {
     await Bun.write(VERSION_SOURCE, source.replace(VERSION_LINE, `export const VERSION = "${version}";`));
     checked("bun", "run", "build");
   }
-  await verifyFiles();
+  await verifyFiles(version);
   checked("bun", "run", "ci");
 
   git("add", VERSION_SOURCE, BUNDLE);
@@ -129,5 +200,5 @@ await run(async () => {
     marker,
   );
   git("push", "--atomic", `--force-with-lease=${MAIN}:${sha}`, "origin", `HEAD:${MAIN}`, `refs/tags/${tag}`);
-  publish(repo, tag);
+  await publish(repo, tag, marker);
 });

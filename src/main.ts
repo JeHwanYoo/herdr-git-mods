@@ -138,7 +138,11 @@ class Session {
       commands: () => this.commands,
     };
     this.workspaces = new WorkspacesBox(this.services, cx);
-    this.settings = new SettingsTab(cx);
+    this.settings = new SettingsTab(
+      cx,
+      (cx) => this.commands.dispatch("update", cx),
+      () => this.commands.update.status(),
+    );
     const changes = new ChangesTab(this.services, this.workspaces, cx);
     this.changes = changes;
     this.graph = new GraphTab(this.services, cx, () => this.settings.graph, this.workspaces);
@@ -153,6 +157,7 @@ class Session {
     });
     changes.activate(cx);
     this.listenCommands(cx);
+    this.commands.update.watch(cx);
     this.refresh("repository", cx);
     cx.timer.every(REFRESH_MS, (cx) => {
       if (this.settings.autoRefresh) this.refresh("changes", cx);

@@ -3,11 +3,10 @@ import type { AsyncContext, Context, Element, KeyEvent, ScrollWheelEvent } from 
 import { div } from "gpui-kit";
 import type { Repository, RunGit } from "../git/repository.ts";
 import type { RepositoryContext, RepositoryLocation } from "../runtime/context.ts";
+import { VERSION } from "../version.ts";
 import type { Overlay } from "./overlay.ts";
 import { GLYPH, type Look } from "./theme.ts";
 import { type ActionCell, actionBar, displayWidth, spinner, tabLabel, truncateToWidth } from "./widgets.ts";
-
-export const VERSION = "0.1.0";
 
 export type TabId = "changes" | "graph" | "files" | "settings";
 

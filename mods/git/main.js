@@ -1,7 +1,9 @@
+// Herdr Git Mods v0.1.0
+
 // src/main.ts
 import { v_flex as v_flex23 } from "gpui-base";
 import { div as div25, View } from "gpui-kit";
-import { exec as exec4, nextCommand, watchFolder } from "herdr";
+import { exec as exec5, nextCommand, watchFolder } from "herdr";
 
 // src/git/read-sharing.ts
 function shareSummaryReads(git) {
@@ -4652,9 +4654,6 @@ ${paths.slice(0, 5).join(`
   }
 }
 
-// src/ui/commands.ts
-import { run as run4, updates } from "herdr";
-
 // src/git/workflows.ts
 function local(reference) {
   return reference.startsWith("refs/heads/") ? reference.slice("refs/heads/".length) : reference;
@@ -5670,7 +5669,17 @@ import { div as div12 } from "gpui-kit";
 // src/ui/shell.ts
 import { Button as Button3, h_flex as h_flex12, v_flex as v_flex11 } from "gpui-base";
 import { div as div11 } from "gpui-kit";
+
+// src/version.ts
 var VERSION = "0.1.0";
+var BUNDLE_ASSET = "main.js";
+var BUNDLE_LIMIT = 1024 * 1024;
+function bundleHeader(version) {
+  return `// Herdr Git Mods v${version}
+`;
+}
+
+// src/ui/shell.ts
 var TAB_ORDER = ["changes", "graph", "files", "settings"];
 var TAB_LABELS = {
   changes: { label: "Changes", shortcut: "1" },
@@ -7058,6 +7067,226 @@ class TargetPicker {
   }
 }
 
+// src/ui/commands/update.ts
+import { appHome as appHome2, checking, exec as exec2, notify as notify2, readTextFile, writeTextFile } from "herdr";
+
+// src/runtime/mod-release.ts
+import { createHash } from "crypto";
+var REPO = "JeHwanYoo/herdr-git-mods";
+var LATEST = `https://api.github.com/repos/${REPO}/releases/latest`;
+var TAG = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+function object(value) {
+  return typeof value === "object" && value !== null;
+}
+function newerVersion(candidate, current) {
+  const parts = candidate.slice(1).split(".").map(BigInt);
+  const installed = current.split(".").map(BigInt);
+  for (const [index, part] of installed.entries()) {
+    const next = parts[index];
+    if (next !== undefined && next !== part)
+      return next > part;
+  }
+  return false;
+}
+async function latestRelease(current, download) {
+  const data = JSON.parse(await download(LATEST));
+  if (!object(data) || typeof data.tag_name !== "string" || !TAG.test(data.tag_name) || data.draft !== false || data.prerelease !== false) {
+    throw new Error("GitHub did not return a stable release.");
+  }
+  const tag = data.tag_name;
+  if (!newerVersion(tag, current))
+    return null;
+  const asset = Array.isArray(data.assets) ? data.assets.find((entry) => object(entry) && entry.name === BUNDLE_ASSET) : null;
+  if (!object(asset) || asset.state !== "uploaded" || typeof asset.size !== "number" || asset.size <= 0 || asset.size > BUNDLE_LIMIT || typeof asset.digest !== "string" || !/^sha256:[a-f0-9]{64}$/.test(asset.digest)) {
+    throw new Error(`${tag} has no verifiable ${BUNDLE_ASSET} release asset.`);
+  }
+  return { tag, sha256: asset.digest.slice("sha256:".length) };
+}
+async function installRelease(current, release, file, download) {
+  if (!TAG.test(release.tag) || !newerVersion(release.tag, current)) {
+    throw new Error("The release is no longer newer than this version.");
+  }
+  const installed = await file.read();
+  if (installed === null || installed.split(/\r?\n/, 1)[0] !== bundleHeader(current).trimEnd()) {
+    throw new Error("The installed bundle changed. Reopen Git before updating.");
+  }
+  const bundle = await download(`https://github.com/${REPO}/releases/download/${release.tag}/${BUNDLE_ASSET}`);
+  const sha256 = createHash("sha256").update(bundle).digest("hex");
+  if (sha256 !== release.sha256 || !bundle.startsWith(bundleHeader(release.tag.slice(1)))) {
+    throw new Error(`The downloaded bundle failed verification for ${release.tag}.`);
+  }
+  await file.replace(bundle, installed);
+}
+
+// src/ui/commands/update.ts
+var UPDATE_INTERVAL = 30 * 60 * 1000;
+var UPDATE_TICK = 60 * 1000;
+var LAST_CHECK = "git-release-check";
+var LAST_NOTICE = "git-release-notice";
+var TITLE = "Update Herdr Git Mods";
+async function download(url) {
+  const result = await exec2("curl", [
+    "-q",
+    "--silent",
+    "--show-error",
+    "--fail",
+    "--location",
+    "--max-redirs",
+    "3",
+    "--proto",
+    "=https",
+    "--proto-redir",
+    "=https",
+    "--connect-timeout",
+    "10",
+    "--max-time",
+    "30",
+    "--max-filesize",
+    String(BUNDLE_LIMIT),
+    url
+  ], { cwd: appHome2(), timeout: 35000 });
+  if (result.code !== 0)
+    throw new Error(result.stderr.trim() || "GitHub request failed.");
+  return result.stdout;
+}
+
+class ModUpdate {
+  overlay;
+  pending = null;
+  available = null;
+  installing = false;
+  active = true;
+  constructor(overlay) {
+    this.overlay = overlay;
+  }
+  release() {
+    this.active = false;
+  }
+  status() {
+    if (this.installing)
+      return "Installing update…";
+    if (this.pending)
+      return "Checking GitHub…";
+    return this.available ? `${this.available.tag} available` : null;
+  }
+  check() {
+    if (this.pending)
+      return this.pending;
+    localStorage.setItem(LAST_CHECK, String(Date.now()));
+    this.pending = latestRelease(VERSION, download).then((release) => {
+      this.available = release;
+      return release;
+    }).finally(() => {
+      this.pending = null;
+    });
+    return this.pending;
+  }
+  watch(cx) {
+    if (checking())
+      return;
+    this.background(cx);
+    cx.timer.every(UPDATE_TICK, (cx) => this.background(cx));
+  }
+  background(cx) {
+    if (!this.active || this.installing)
+      return;
+    cx.spawn(async (cx) => {
+      const elapsed = Date.now() - Number(localStorage.getItem(LAST_CHECK));
+      if (elapsed >= 0 && elapsed < UPDATE_INTERVAL)
+        return;
+      let release;
+      try {
+        release = await this.check();
+      } catch {
+        if (this.active)
+          cx.notify();
+        return;
+      }
+      if (!this.active)
+        return;
+      if (release && localStorage.getItem(LAST_NOTICE) !== release.tag) {
+        localStorage.setItem(LAST_NOTICE, release.tag);
+        notify2({ title: `Herdr Git Mods ${release.tag} is available`, body: "Open Git Settings to install it." });
+      }
+      cx.notify();
+    });
+  }
+  open(cx) {
+    if (this.installing)
+      return;
+    const dialog = this.progress("Checking GitHub Releases…");
+    cx.spawn(async (cx) => {
+      try {
+        const release = await this.check();
+        if (!this.active || this.overlay.current() !== dialog)
+          return;
+        if (release)
+          this.confirm(release);
+        else
+          showResult(this.overlay, "Update check", true, `Herdr Git Mods v${VERSION} is up to date.`, undefined, cx);
+      } catch (error) {
+        if (!this.active || this.overlay.current() !== dialog)
+          return;
+        showResult(this.overlay, "Update check", false, errorMessage2(error));
+      }
+      cx.notify();
+    });
+  }
+  progress(message) {
+    const dialog = {
+      kind: "confirm",
+      title: TITLE,
+      width: DIALOG.medium,
+      lines: [message],
+      primary: "",
+      secondary: "[Esc] Close",
+      enabled: () => false,
+      onConfirm: () => {}
+    };
+    this.overlay.open(dialog);
+    return dialog;
+  }
+  confirm(release) {
+    this.overlay.open({
+      kind: "confirm",
+      title: TITLE,
+      width: DIALOG.medium,
+      lines: [`v${VERSION} → ${release.tag}`, "", "Install the GitHub release and reload Git?"],
+      primary: "[Enter] Install",
+      onConfirm: (cx) => this.install(release, cx)
+    });
+  }
+  install(release, cx) {
+    if (this.installing)
+      return;
+    this.installing = true;
+    const dialog = this.progress(`Installing ${release.tag}…`);
+    cx.spawn(async (cx) => {
+      try {
+        const path = `${appHome2()}/mods/git/${BUNDLE_ASSET}`;
+        await installRelease(VERSION, release, { read: () => readTextFile(path), replace: (text, expected) => writeTextFile(path, text, expected) }, download);
+        this.available = null;
+        if (!this.active)
+          return;
+        notify2({ title: `Installed Herdr Git Mods ${release.tag}`, level: "success" });
+        if (this.overlay.current() === dialog)
+          this.overlay.close(cx);
+      } catch (error) {
+        if (!this.active)
+          return;
+        if (this.overlay.current() === dialog)
+          showResult(this.overlay, TITLE, false, errorMessage2(error));
+        else
+          notify2({ title: "Herdr Git Mods update failed", body: errorMessage2(error), level: "error" });
+      } finally {
+        this.installing = false;
+      }
+      if (this.active)
+        cx.notify();
+    });
+  }
+}
+
 // src/ui/commands.ts
 var QUICK = {
   fetch: "fetch",
@@ -7109,12 +7338,15 @@ class Commands {
   services;
   targets;
   running = null;
+  update;
   constructor(services, targets) {
     this.services = services;
     this.targets = targets;
+    this.update = new ModUpdate(services.overlay);
   }
   release() {
     this.running = null;
+    this.update.release();
   }
   context() {
     const repository = this.services.repository();
@@ -7137,14 +7369,12 @@ class Commands {
   }
   rows(query) {
     const context = this.context();
-    const update = updates();
-    const available = !!(update.app.ready || update.core.ready);
     return COMMANDS.filter((id) => TITLES[id].toLowerCase().includes(query)).map((id) => {
       const reason = unavailable(id, context);
       return {
         id,
         label: TITLES[id],
-        status: id === "update" && available ? "Update available" : statusLabel(reason),
+        status: (id === "update" ? this.update.status() : null) ?? statusLabel(reason),
         disabled: reason !== null
       };
     });
@@ -7252,30 +7482,6 @@ class Commands {
       footer: "Choose a stash operation",
       primary: "[Enter] Continue",
       onChoose: (row, cx) => this.dispatch(row.id, cx)
-    });
-  }
-  openUpdate() {
-    const info = updates();
-    const app = `Herdr ${info.app.version}${info.app.ready ? ` · ${info.app.ready} ready` : ""}`;
-    const core = `herdr-core ${info.core.version ?? "unavailable"}${info.core.ready ? ` · ${info.core.ready} ready` : ""}${info.core.managed ? ` · managed by ${info.core.managed}` : ""}`;
-    const lines = [
-      `Herdr Git Mods v${VERSION} ships inside the Herdr app and updates with it.`,
-      "",
-      app,
-      core,
-      "",
-      info.checks ? "Open Herdr's update settings to install updates." : "This Herdr build does not update itself."
-    ];
-    this.services.overlay.open({
-      kind: "confirm",
-      title: "Update Herdr Git Mods",
-      width: DIALOG.medium,
-      lines,
-      primary: "[Enter] Update",
-      enabled: () => info.checks,
-      onConfirm: () => {
-        run4("app.settings", { section: "updates" });
-      }
     });
   }
   openResetFlow(target, cx) {
@@ -7388,7 +7594,7 @@ Resolve conflicts, then use: ${recovery}` : ""}`;
   }
   flows(id, cx) {
     const flows = {
-      update: () => this.openUpdate(),
+      update: () => this.update.open(cx),
       refresh: () => this.services.refresh("repository", cx),
       "switch-repository": () => this.targets.workspaces.manage(cx),
       reset: () => this.openTarget("reset", cx),
@@ -7439,7 +7645,7 @@ import { h_flex as h_flex15, InputState as InputState3, v_flex as v_flex16 } fro
 import { div as div16 } from "gpui-kit";
 
 // src/ui/explorer/preview.ts
-import { exec as exec2, readTextFile } from "herdr";
+import { exec as exec3, readTextFile as readTextFile2 } from "herdr";
 var BYTE_LIMIT = 1024 * 1024;
 function previewNotice(notice) {
   return { lines: [], before: [], notice };
@@ -7476,10 +7682,10 @@ function mergeChanges(source, changes, path) {
 async function readPreview(git, root, on, file, newFile) {
   const absolute = `${root}/${file}`;
   try {
-    const link = await exec2("readlink", [absolute], { on });
+    const link = await exec3("readlink", [absolute], { on });
     if (link.code === 0 && link.stdout.trim())
       return previewNotice(`Symbolic link to ${link.stdout.trim()}`);
-    const text = await readTextFile(absolute, { on });
+    const text = await readTextFile2(absolute, { on });
     if (text === null)
       return previewNotice("Deleted in the working tree");
     if (text.length > BYTE_LIMIT)
@@ -10270,16 +10476,19 @@ class Overlay {
 // src/ui/settings.ts
 import { h_flex as h_flex21, v_flex as v_flex21 } from "gpui-base";
 import { div as div22 } from "gpui-kit";
-import { run as run5 } from "herdr";
 var LABEL_WIDTH = 24;
 
 class SettingsTab {
+  checkUpdates;
+  updateStatus;
   id = "settings";
   graph;
   autoRefresh;
   selected = 0;
   handle;
-  constructor(cx) {
+  constructor(cx, checkUpdates, updateStatus) {
+    this.checkUpdates = checkUpdates;
+    this.updateStatus = updateStatus;
     this.handle = cx.focus_handle();
     this.graph = localStorage.getItem("git-graph") !== "off";
     this.autoRefresh = localStorage.getItem("git-auto-refresh") !== "off";
@@ -10323,11 +10532,11 @@ class SettingsTab {
       {
         id: "versions",
         label: "Versions",
-        control: " Herdr updates ",
+        control: " [Enter] Check ",
         on: false,
-        status: `Current version v${VERSION}`,
-        description: "Opens Herdr's update settings",
-        activate: () => run5("app.settings", { section: "updates" })
+        status: this.updateStatus() ?? `Current version v${VERSION}`,
+        description: "Check GitHub Releases for a Git mod update",
+        activate: this.checkUpdates
       }
     ];
   }
@@ -10339,7 +10548,7 @@ class SettingsTab {
     if (move !== undefined)
       this.selected = Math.max(0, Math.min(last, this.selected + move));
     else if (event.keystroke === "enter" || event.keystroke === "space")
-      rows[this.selected]?.activate();
+      rows[this.selected]?.activate(cx);
     else
       return;
     cx.stop_propagation();
@@ -10351,8 +10560,8 @@ class SettingsTab {
     for (const [index, row] of this.rows().entries())
       body.child(v_flex21().id(`git-setting-${row.id}`).when(index === this.selected, (el) => el.bg(t.selection)).hover((style) => style.bg(index === this.selected ? t.selection : t.hover)).on_click((_, cx) => {
         this.selected = index;
-        row.activate();
         this.handle.focus();
+        row.activate(cx);
         cx.notify();
       }).child(h_flex21().h(look.row).whitespace_nowrap().child(div22().font_weight(700).child(padToWidth(`  ${row.label}`, LABEL_WIDTH))).child(div22().when(row.on, (el) => el.bg(t.accent).text_color(t.textInverse).font_weight(700)).when(!row.on, (el) => el.bg(t.inert).text_color(t.hint)).child(row.control)).child(div22().text_color(t.hint).child(`  ${row.status}`))).child(div22().h(look.row).truncate().text_color(t.secondary).child(`${" ".repeat(LABEL_WIDTH)}${row.description}`)));
     return box(look, { id: "git-settings", title: "Settings", focused: this.handle.is_focused() }, body).size_full().track_focus(this.handle).on_key_down((event, cx) => this.key(event, cx));
@@ -10364,19 +10573,19 @@ import { Button as Button4, h_flex as h_flex23 } from "gpui-base";
 import {
   div as div24
 } from "gpui-kit";
-import { exec as exec3, pickFolder } from "herdr";
+import { exec as exec4, pickFolder } from "herdr";
 
 // src/git/workspaces.ts
 var READ4 = ["--no-optional-locks", "-c", "core.fsmonitor=false", "-c", "diff.autoRefreshIndex=false"];
 var CLEAN2 = { changedPaths: 0, additions: 0, deletions: 0 };
-async function run6(git, args) {
+async function run4(git, args) {
   const result = await git([...READ4, ...args]);
   if (result.code !== 0)
     throw new Error(result.stderr.trim() || `git ${args[0]} exited with ${result.code}`);
   return result.stdout;
 }
 async function worktreePaths(git) {
-  const output = await run6(git, ["worktree", "list", "--porcelain", "-z"]);
+  const output = await run4(git, ["worktree", "list", "--porcelain", "-z"]);
   return output.split("\x00").filter((field) => field.startsWith("worktree ")).map((field) => field.slice(9));
 }
 async function projectRoot(git) {
@@ -10439,7 +10648,7 @@ async function changeOverview(git, report) {
   };
 }
 async function readReport(git) {
-  return parseWorktreeReport(await run6(git, [
+  return parseWorktreeReport(await run4(git, [
     "-c",
     "status.relativePaths=false",
     "status",
@@ -10452,7 +10661,7 @@ async function readReport(git) {
 async function inspectWorktree(gitAt, path, previous, discover = true, repository) {
   const supplied = repository?.root === path ? repository : null;
   const report = supplied ? parseWorktreeReport(supplied.porcelain, supplied.files) : await readReport(gitAt(path));
-  const root = supplied?.root ?? (discover ? (await run6(gitAt(path), ["rev-parse", "--show-toplevel"])).replace(/\n$/, "") : path);
+  const root = supplied?.root ?? (discover ? (await run4(gitAt(path), ["rev-parse", "--show-toplevel"])).replace(/\n$/, "") : path);
   const unchanged = previous?.path === root && previous.fingerprint === report.fingerprint ? previous : null;
   if (unchanged && report.files.length === 0)
     return unchanged;
@@ -10686,7 +10895,7 @@ function message3(error) {
   return error instanceof Error ? error.message : String(error);
 }
 function gitAt(on) {
-  return (cwd) => (args) => exec3("git", args, { cwd, on });
+  return (cwd) => (args) => exec4("git", args, { cwd, on });
 }
 function line2(look, spans) {
   const row = h_flex23().flex_none().h(look.row).min_w(0).whitespace_nowrap().overflow_hidden();
@@ -11286,7 +11495,7 @@ class Session {
         if (repository?.state !== "ready")
           return null;
         const on = this.on;
-        return (args) => exec4("git", args, { cwd: repository.root, on, timeout: 300000 });
+        return (args) => exec5("git", args, { cwd: repository.root, on, timeout: 300000 });
       },
       mutate: (context, label, action, cx) => this.mutate(context, label, action, cx),
       busy: () => this.operation,
@@ -11308,7 +11517,7 @@ class Session {
       commands: () => this.commands
     };
     this.workspaces = new WorkspacesBox(this.services, cx);
-    this.settings = new SettingsTab(cx);
+    this.settings = new SettingsTab(cx, (cx) => this.commands.dispatch("update", cx), () => this.commands.update.status());
     const changes = new ChangesTab(this.services, this.workspaces, cx);
     this.changes = changes;
     this.graph = new GraphTab(this.services, cx, () => this.settings.graph, this.workspaces);
@@ -11323,6 +11532,7 @@ class Session {
     });
     changes.activate(cx);
     this.listenCommands(cx);
+    this.commands.update.watch(cx);
     this.refresh("repository", cx);
     cx.timer.every(REFRESH_MS, (cx) => {
       if (this.settings.autoRefresh)
@@ -11405,7 +11615,7 @@ class Session {
     const cwd = where.cwd;
     cx.spawn(async (cx) => {
       try {
-        const git = (args) => exec4("git", args, { cwd, on: where.on });
+        const git = (args) => exec5("git", args, { cwd, on: where.on });
         const repository = await readRepository(git);
         const facts = repository.state === "ready" ? await readFacts(git) : EMPTY_FACTS;
         if (!current())
@@ -11428,7 +11638,7 @@ class Session {
   applyRepository(repository, facts, cx) {
     const on = this.on;
     this.repository = repository;
-    this.readGit = repository.state === "ready" ? shareSummaryReads((args) => exec4("git", args, { cwd: repository.root, on })) : null;
+    this.readGit = repository.state === "ready" ? shareSummaryReads((args) => exec5("git", args, { cwd: repository.root, on })) : null;
     this.facts = facts;
     this.repositoryError = null;
     this.loading = false;
@@ -11468,7 +11678,7 @@ class Session {
     this.loading = false;
     cx.spawn(async (cx) => {
       try {
-        const git = (args) => exec4("git", args, { cwd: repository.root, on });
+        const git = (args) => exec5("git", args, { cwd: repository.root, on });
         const latest = await readRepository(git);
         if (!current())
           return;

@@ -1,7 +1,7 @@
 import { h_flex, v_flex } from "gpui-base";
 import { type AsyncContext, type Context, div, type Element, type FocusHandle, type KeyEvent } from "gpui-kit";
-import { run } from "herdr";
-import { type TabView, VERSION } from "./shell.ts";
+import { VERSION } from "../version.ts";
+import type { TabView } from "./shell.ts";
 import type { Look } from "./theme.ts";
 import { box, padToWidth } from "./widgets.ts";
 
@@ -14,7 +14,7 @@ interface SettingRow {
   on: boolean;
   status: string;
   description: string;
-  activate: () => void;
+  activate: (cx: Context) => void;
 }
 
 export class SettingsTab implements TabView {
@@ -24,7 +24,11 @@ export class SettingsTab implements TabView {
   private selected = 0;
   private handle: FocusHandle;
 
-  constructor(cx: AsyncContext) {
+  constructor(
+    cx: AsyncContext,
+    private readonly checkUpdates: (cx: Context) => void,
+    private readonly updateStatus: () => string | null,
+  ) {
     this.handle = cx.focus_handle();
     this.graph = localStorage.getItem("git-graph") !== "off";
     this.autoRefresh = localStorage.getItem("git-auto-refresh") !== "off";
@@ -74,11 +78,11 @@ export class SettingsTab implements TabView {
       {
         id: "versions",
         label: "Versions",
-        control: " Herdr updates ",
+        control: " [Enter] Check ",
         on: false,
-        status: `Current version v${VERSION}`,
-        description: "Opens Herdr's update settings",
-        activate: () => run("app.settings", { section: "updates" }),
+        status: this.updateStatus() ?? `Current version v${VERSION}`,
+        description: "Check GitHub Releases for a Git mod update",
+        activate: this.checkUpdates,
       },
     ];
   }
@@ -89,7 +93,7 @@ export class SettingsTab implements TabView {
     const moves: Record<string, number> = { up: -1, k: -1, down: 1, j: 1, home: -last, end: last };
     const move = moves[event.keystroke];
     if (move !== undefined) this.selected = Math.max(0, Math.min(last, this.selected + move));
-    else if (event.keystroke === "enter" || event.keystroke === "space") rows[this.selected]?.activate();
+    else if (event.keystroke === "enter" || event.keystroke === "space") rows[this.selected]?.activate(cx);
     else return;
     cx.stop_propagation();
     cx.notify();
@@ -106,8 +110,8 @@ export class SettingsTab implements TabView {
           .hover((style) => style.bg(index === this.selected ? t.selection : t.hover))
           .on_click((_, cx) => {
             this.selected = index;
-            row.activate();
             this.handle.focus();
+            row.activate(cx);
             cx.notify();
           })
           .child(
