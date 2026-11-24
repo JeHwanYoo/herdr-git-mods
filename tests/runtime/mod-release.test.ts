@@ -1,7 +1,7 @@
 import { expect, test } from "bun:test";
 import { createHash } from "node:crypto";
-import { type BundleFile, installRelease, latestRelease, type ModRelease } from "../src/runtime/mod-release.ts";
-import { bundleHeader } from "../src/version.ts";
+import { type BundleFile, installRelease, latestRelease, type ModRelease } from "../../src/runtime/mod-release.ts";
+import { bundleHeader } from "../../src/version.ts";
 
 const installed = `${bundleHeader("0.1.9")}export default "old";\n`;
 const replacement = `${bundleHeader("0.1.10")}export default "새 버전";\n`;

@@ -1,6 +1,6 @@
 import { expect, test } from "bun:test";
-import { readGitPaneTarget } from "../src/runtime/pane-target.ts";
-import { RepositorySelection } from "../src/runtime/repository-selection.ts";
+import { readGitPaneTarget } from "../../src/runtime/pane-target.ts";
+import { RepositorySelection } from "../../src/runtime/repository-selection.ts";
 
 function reply(root: unknown, tab = "tb-work"): string {
   return [

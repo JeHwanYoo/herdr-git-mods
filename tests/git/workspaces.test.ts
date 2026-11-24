@@ -2,10 +2,10 @@ import { afterEach, expect, test } from "bun:test";
 import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readChanges } from "../src/git/comparison.ts";
-import { shareSummaryReads } from "../src/git/read-sharing.ts";
-import { type GitResult, readRepository } from "../src/git/repository.ts";
-import { type GitAt, inspectProject, inspectWorktree, projectRoot } from "../src/git/workspaces.ts";
+import { readChanges } from "../../src/git/comparison.ts";
+import { shareSummaryReads } from "../../src/git/read-sharing.ts";
+import { type GitResult, readRepository } from "../../src/git/repository.ts";
+import { type GitAt, inspectProject, inspectWorktree, projectRoot } from "../../src/git/workspaces.ts";
 
 const ENV = {
   ...process.env,
