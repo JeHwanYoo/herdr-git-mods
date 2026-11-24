@@ -21,6 +21,12 @@ Limit documentation to shared rules and keep it minimal. Update existing documen
 
 Write README.md for people using the mod: easy to scan, focused on current usage. Record feature changes in a pull request or the developer's issue tracker.
 
+## Commit messages
+
+Follow [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/).
+
+- `feat(files): preview working-tree images`
+
 ## Pull requests
 
 Use the [PR template](.github/pull_request_template.md) when opening or updating a pull request. Keep its headings and replace the prompts with your answers.
