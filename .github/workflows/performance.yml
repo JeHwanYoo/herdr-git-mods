@@ -27,7 +27,7 @@ jobs:
           key: linux-fixture-v6.12-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: |
             linux-fixture-v6.12-${{ runner.os }}-
-      - run: bun run performance:container
+      - run: bun run performance
         env:
           PERF_CACHE_DIR: ${{ runner.temp }}/herdr-performance-cache
           PERF_REPORT: ${{ runner.temp }}/performance.json

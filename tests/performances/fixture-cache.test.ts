@@ -3,7 +3,7 @@ import { access, mkdir, mkdtemp, readFile, realpath, rename, rm, writeFile } fro
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { pathToFileURL } from "node:url";
-import { cloneFixture, prepareFixtureCache } from "../../scripts/performance-cache.ts";
+import { cloneFixture, prepareFixtureCache } from "./fixture-cache.ts";
 
 const directories: string[] = [];
 const env = {

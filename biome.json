@@ -68,7 +68,7 @@
   },
   "overrides": [
     {
-      "includes": ["scripts/**"],
+      "includes": ["scripts/**", "tests/performances/**", "!tests/performances/**/*.test.ts"],
       "linter": {
         "rules": {
           "suspicious": {

@@ -33,7 +33,7 @@ src/
 ├── runtime/      Pane placement, repository selection, Herdr context and release verification
 └── version.ts    Version and release bundle format shared with the build
 mods/git/         Installable manifest, icon and generated bundle
-tests/            Real-Git and pane-context regression tests
+tests/            Git, Herdr runtime, and container performance tests
 scripts/          Build, checks and local installation
 ```
 

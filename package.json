@@ -23,9 +23,7 @@
     "unlink": "bun scripts/link.ts --remove",
     "check": "bun run lint && bun run check-comments && bun run typecheck && bun test && bun run build && bun run check-mod",
     "ci": "biome ci && bun run check-comments && bun run typecheck:tests && bun test && bun run build:check",
-    "performance": "bun scripts/performance.ts",
-    "performance:full": "bun scripts/performance-full.ts",
-    "performance:container": "bun scripts/performance-container.ts"
+    "performance": "bun tests/performances/container.ts"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.4",
