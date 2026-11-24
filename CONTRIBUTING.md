@@ -35,7 +35,7 @@ bun run link     # Build, check, and copy the mod into Herdr
 bun run unlink   # Remove the mod installed by link
 ```
 
-The mod is copied to `~/.config/herdr-app/mods/git/`, or `$HERDR_APP_HOME/mods/git/` if set. Merge the repository's `keys.json` binding into the Herdr home's `keys.json`, preserving existing bindings and asking before replacing a conflicting key, then press ⌘G to open and close the rightmost Git pane. Run `bun run link` after each change; Herdr reloads the copied mod. The script refuses to overwrite or remove a mod it did not install. If the mod breaks, Herdr keeps the last working version running and reports the error in `herdr-app status`.
+The mod is copied to `~/.config/herdr-app/mods/git/`, or `$HERDR_APP_HOME/mods/git/` if set. The link script registers ⌘G in the Herdr home's `keys.json`. If another global action uses ⌘G, the script asks before replacing it. An unattended run keeps the existing action. Press ⌘G to open or close the rightmost Git pane. Run `bun run link` after each change; Herdr reloads the copied mod. The script refuses to overwrite or remove a mod it did not install. If the mod breaks, Herdr keeps the last working version running and reports the error in `herdr-app status`.
 
 ## Make a change
 

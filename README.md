@@ -66,7 +66,7 @@ Install [Bun](https://bun.com), then run:
 ```sh
 bun install
 bun run check  # Lint, type check, tests, build, and herdr-app check
-bun run link   # Build and install the mod into Herdr
+bun run link   # Install the mod and register ⌘G in Herdr
 ```
 
 ## Contributing
