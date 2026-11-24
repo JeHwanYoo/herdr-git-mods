@@ -8,7 +8,7 @@ Herdr Git Mods reproduces the interface of the herdr-git TUI v0.6.1 ([JeHwanYoo/
 
 All text uses the person's terminal font: `settings().font_family` (or `font`) and `font_size`, falling back to JetBrains Mono 14. One cell is `font_size × 0.6 × terminal_cell_width` wide; one row is `round(font_size × 1.3 × terminal_line_height)` tall. The view sets that font, size and row height (in px) on its root, so regions are built in whole rows and columns with `cols(look, n)` and `rows(look, n)`. Herdr scales those px by its zoom, and reports sizes and pointer positions in the scaled px, so convert measurements to columns and rows with `look.screenCell` and `look.screenRow`. Boxes draw a 1px outline at the centre of their border cells with the title on the top edge, like a ratatui `Block`; a focused box uses `accent`.
 
-Icons that need custom shapes use SVG path data in `src/ui/icons.ts`. GPUI paints each icon within two columns and one row using the surrounding text color. The paths ship inside `main.js`, so updates can use the same bundle as a fresh install.
+Icons that need custom shapes use SVG path data in `src/ui/icons.ts`. GPUI paints each icon within two columns and one row using the requested theme color or the default text color. The paths ship inside `main.js`, so updates can use the same bundle as a fresh install.
 
 The TUI's colors map to theme names in `palette()`:
 

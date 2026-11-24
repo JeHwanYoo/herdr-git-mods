@@ -41,8 +41,8 @@ import type { WorkspacesBox } from "./workspaces.ts";
 const GRAPH_ACTIONS: readonly (Pick<ActionCell, "label" | "shortcut" | "icon" | "symbol"> & { id: GraphAction })[] = [
   { id: "checkout", label: "Checkout", shortcut: "x", icon: "checkout" },
   { id: "rebase", label: "Rebase", shortcut: "r", icon: "rebase" },
-  { id: "cherry-pick", label: "Cherry-pick", shortcut: "y", symbol: "⎇" },
-  { id: "revert", label: "Revert", shortcut: "v", symbol: "↩" },
+  { id: "cherry-pick", label: "Cherry-pick", shortcut: "y", icon: "cherryPick" },
+  { id: "revert", label: "Revert", shortcut: "v", icon: "revert" },
   { id: "reset", label: "Reset", shortcut: "t", icon: "reset" },
   { id: "copy-sha", label: "Copy SHA", shortcut: "h", icon: "copy" },
 ];

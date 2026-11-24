@@ -29,7 +29,7 @@ function badgeStyle(kind: CommitRefKind, t: Palette): { icon?: IconName; symbol?
 
 function badgeSpans(references: readonly CommitRef[], width: number, t: Palette): CellSpan[] {
   const spans: CellSpan[] = [];
-  let remaining = width;
+  let remaining = width - 1;
   for (const reference of references) {
     const separator = spans.length ? 1 : 0;
     const available = remaining - separator;
@@ -46,7 +46,7 @@ function badgeSpans(references: readonly CommitRef[], width: number, t: Palette)
     else spans.push({ text: ` ${symbol} ${name} `, bg });
     remaining -= badgeWidth;
   }
-  if (spans.length && remaining > 0) spans.push({ text: " " });
+  if (spans.length) spans.push({ text: " " });
   return spans;
 }
 
