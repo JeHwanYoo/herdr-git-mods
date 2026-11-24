@@ -17,9 +17,12 @@ async function bundle(): Promise<string> {
     banner: bundleHeader(VERSION).trimEnd(),
     plugins: [
       {
-        name: "herdr-crypto",
+        name: "herdr-builtins",
         setup(build) {
-          build.onResolve({ filter: /^node:crypto$/ }, () => ({ path: "crypto", external: true }));
+          build.onResolve({ filter: /^node:(buffer|crypto|fs\/promises|process)$/ }, ({ path }) => ({
+            path: path.slice("node:".length),
+            external: true,
+          }));
         },
       },
     ],

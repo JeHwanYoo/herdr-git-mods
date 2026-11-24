@@ -55,6 +55,8 @@ Git checks GitHub Releases for updates while its pane is open. Open **Settings â
 | Stash                       | Save uncommitted changes and restore them                                                                                                          |
 | Workspaces                  | Switch between repositories, Projects, and worktrees                                                                                               |
 
+Files also previews PNG, JPEG, and WebP images from the local working tree.
+
 ## Keyboard shortcuts
 
 Hold `Alt` to see all keyboard shortcuts.

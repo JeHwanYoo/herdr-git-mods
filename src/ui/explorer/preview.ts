@@ -2,6 +2,14 @@ import { exec, readTextFile } from "herdr";
 import { type LineChange, readLineChanges } from "../../git/files.ts";
 import type { RunGit } from "../../git/repository.ts";
 import { type CodeLine, highlight, sourceLines } from "../code-view.ts";
+import type { ImageFormat, PreviewImage } from "./image.ts";
+
+const images = new Map<string, ImageFormat>([
+  ["png", "png"],
+  ["jpg", "jpeg"],
+  ["jpeg", "jpeg"],
+  ["webp", "webp"],
+]);
 
 const BYTE_LIMIT = 1024 * 1024;
 
@@ -9,6 +17,7 @@ export interface FilePreview {
   lines: CodeLine[];
   before: (number | null)[];
   notice: string | null;
+  image?: PreviewImage;
 }
 
 export function previewNotice(notice: string): FilePreview {
@@ -53,6 +62,11 @@ export async function readPreview(
   newFile: boolean,
 ): Promise<FilePreview> {
   const absolute = `${root}/${file}`;
+  const format = images.get(file.match(/\.([^./]+)$/)?.[1]?.toLowerCase() ?? "");
+  if (format)
+    return on
+      ? previewNotice("Image preview requires a local working tree")
+      : { lines: [], before: [], notice: null, image: { path: absolute, format } };
   try {
     const link = await exec("readlink", [absolute], { on });
     if (link.code === 0 && link.stdout.trim()) return previewNotice(`Symbolic link to ${link.stdout.trim()}`);

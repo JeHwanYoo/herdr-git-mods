@@ -2,8 +2,8 @@
 
 // src/main.ts
 import { v_flex as v_flex23 } from "gpui-base";
-import { div as div26, View } from "gpui-kit";
-import { exec as exec5, nextCommand, watchFolder } from "herdr";
+import { div as div27, View } from "gpui-kit";
+import { exec as exec6, nextCommand, watchFolder } from "herdr";
 
 // src/git/read-sharing.ts
 function shareSummaryReads(git) {
@@ -7703,11 +7703,139 @@ Resolve conflicts, then use: ${recovery}` : ""}`;
 
 // src/ui/explorer.ts
 import { h_flex as h_flex15, InputState as InputState3, v_flex as v_flex16 } from "gpui-base";
-import { div as div17 } from "gpui-kit";
+import { div as div18 } from "gpui-kit";
+
+// src/ui/explorer/image.ts
+import { Buffer } from "buffer";
+import { createHash as createHash2, randomUUID } from "crypto";
+import { mkdir, unlink, writeFile } from "fs/promises";
+import { platform } from "process";
+import { div as div17, image } from "gpui-kit";
+import { appHome as appHome3, exec as exec3 } from "herdr";
+var ASSET_FOLDER = "data/git-image-previews";
+var BYTE_LIMIT = 5 * 1024 * 1024;
+var READ_LIMIT = BYTE_LIMIT + 1;
+var EXEC_TIMEOUT = 5000;
+var PNG_SIGNATURE = [137, 80, 78, 71, 13, 10, 26, 10];
+var REDRAW_DELAYS = [150, 700];
+async function readImage(path) {
+  const result = await (platform === "win32" || platform === "windows" ? exec3("powershell.exe", ["-NoProfile", "-NonInteractive", "-EncodedCommand", windowsReadImage(path)], {
+    timeout: EXEC_TIMEOUT
+  }) : exec3("sh", [
+    "-c",
+    'test ! -L "$1" || exit 3; test -f "$1" || exit 2; head -c "$2" "$1" | base64',
+    "git-preview",
+    path,
+    String(READ_LIMIT)
+  ], { timeout: EXEC_TIMEOUT }));
+  if (result.code === 2)
+    throw new Error("Image is unavailable in the working tree");
+  if (result.code === 3)
+    throw new Error("Image preview requires a regular file");
+  if (result.code !== 0)
+    throw new Error("Could not read the image");
+  const bytes = Buffer.from(result.stdout.replace(/\s+/g, ""), "base64");
+  if (bytes.length > BYTE_LIMIT)
+    throw new Error("Image exceeds the 5 MiB preview limit");
+  return bytes;
+}
+function windowsReadImage(path) {
+  const source = Buffer.from(path).toString("base64");
+  const script = `
+$ErrorActionPreference = 'Stop'
+$path = [Text.Encoding]::UTF8.GetString([Convert]::FromBase64String('${source}'))
+$item = Get-Item -LiteralPath $path -Force -ErrorAction SilentlyContinue
+if ($null -eq $item -or $item.PSIsContainer) { exit 2 }
+if ($item.Attributes -band [IO.FileAttributes]::ReparsePoint) { exit 3 }
+$stream = [IO.File]::OpenRead($item.FullName)
+try {
+  $bytes = New-Object byte[] ${READ_LIMIT}
+  $offset = 0
+  while ($offset -lt $bytes.Length) {
+    $count = $stream.Read($bytes, $offset, $bytes.Length - $offset)
+    if ($count -eq 0) { break }
+    $offset += $count
+  }
+  [Console]::Write([Convert]::ToBase64String($bytes, 0, $offset))
+} finally {
+  $stream.Dispose()
+}
+`;
+  return Buffer.from(script, "utf16le").toString("base64");
+}
+function imageFormat(bytes) {
+  if (bytes.length < 12)
+    return null;
+  if (PNG_SIGNATURE.every((byte, index) => bytes[index] === byte))
+    return "png";
+  if (bytes[0] === 255 && bytes[1] === 216 && bytes[2] === 255)
+    return "jpeg";
+  if (Buffer.from(bytes.subarray(0, 12)).toString("ascii").match(/^RIFF....WEBP$/s))
+    return "webp";
+  return null;
+}
+
+class ImagePreview {
+  asset = null;
+  clear() {
+    const previous = this.asset;
+    this.asset = null;
+    if (previous)
+      unlink(previous.absolute).catch(() => {
+        return;
+      });
+  }
+  async load(source, current, cx) {
+    const bytes = await readImage(source.path);
+    if (!current())
+      return;
+    if (imageFormat(bytes) !== source.format)
+      throw new Error("File does not contain a supported image");
+    const digest = String(createHash2("sha256").update(bytes).digest("hex"));
+    if (this.asset?.digest === digest)
+      return;
+    const directory = `${appHome3()}/${ASSET_FOLDER}`;
+    const name = `${randomUUID()}.${source.format}`;
+    const asset = { relative: `${ASSET_FOLDER}/${name}`, absolute: `${directory}/${name}`, digest };
+    try {
+      await mkdir(directory, { recursive: true });
+      if (!current())
+        return;
+      await writeFile(asset.absolute, bytes);
+      if (!current())
+        return;
+      this.clear();
+      this.asset = asset;
+      for (const delay of REDRAW_DELAYS) {
+        cx.timer.after(delay, (cx) => {
+          if (this.asset === asset)
+            cx.notify();
+        });
+      }
+    } finally {
+      if (this.asset !== asset)
+        await unlink(asset.absolute).catch(() => {
+          return;
+        });
+    }
+  }
+  render() {
+    const viewport = div17().flex().flex_1().w_full().min_w(0).min_h(0).overflow_hidden();
+    if (this.asset)
+      viewport.child(image(this.asset.relative).size_full());
+    return viewport;
+  }
+}
 
 // src/ui/explorer/preview.ts
-import { exec as exec3, readTextFile as readTextFile2 } from "herdr";
-var BYTE_LIMIT = 1024 * 1024;
+import { exec as exec4, readTextFile as readTextFile2 } from "herdr";
+var images = new Map([
+  ["png", "png"],
+  ["jpg", "jpeg"],
+  ["jpeg", "jpeg"],
+  ["webp", "webp"]
+]);
+var BYTE_LIMIT2 = 1024 * 1024;
 function previewNotice(notice) {
   return { lines: [], before: [], notice };
 }
@@ -7742,14 +7870,17 @@ function mergeChanges(source, changes, path) {
 }
 async function readPreview(git, root, on, file, newFile) {
   const absolute = `${root}/${file}`;
+  const format = images.get(file.match(/\.([^./]+)$/)?.[1]?.toLowerCase() ?? "");
+  if (format)
+    return on ? previewNotice("Image preview requires a local working tree") : { lines: [], before: [], notice: null, image: { path: absolute, format } };
   try {
-    const link = await exec3("readlink", [absolute], { on });
+    const link = await exec4("readlink", [absolute], { on });
     if (link.code === 0 && link.stdout.trim())
       return previewNotice(`Symbolic link to ${link.stdout.trim()}`);
     const text = await readTextFile2(absolute, { on });
     if (text === null)
       return previewNotice("Deleted in the working tree");
-    if (text.length > BYTE_LIMIT)
+    if (text.length > BYTE_LIMIT2)
       return previewNotice("File is larger than 1 MiB and is not previewed");
     if (text.includes("\x00"))
       return previewNotice("Binary file");
@@ -7973,6 +8104,7 @@ class FilesTab {
   loadingFile = null;
   preview = previewNotice("");
   previewRequest = 0;
+  image = new ImagePreview;
   reveal = false;
   code = new CodeView("git-files-preview");
   query;
@@ -8010,6 +8142,10 @@ class FilesTab {
   deactivate(_cx) {
     this.active = false;
     this.listRequest++;
+    this.previewRequest++;
+    this.loadingFile = null;
+    if (this.preview.image)
+      this.clearPreview();
     if (this.filtering)
       this.closeFilter();
   }
@@ -8017,6 +8153,7 @@ class FilesTab {
     this.setPane(this.pane);
   }
   release() {
+    this.image.clear();
     this.active = false;
     this.listRequest++;
     this.previewRequest++;
@@ -8060,6 +8197,7 @@ class FilesTab {
     return this.pane === pane && !this.filtering && !this.workspaces.isFocused();
   }
   reset(cx) {
+    this.image.clear();
     this.listRequest++;
     this.previewRequest++;
     this.searchRequest++;
@@ -8144,6 +8282,7 @@ class FilesTab {
       this.clearPreview();
   }
   clearPreview() {
+    this.image.clear();
     this.previewRequest++;
     this.loadingFile = null;
     this.previewFile = null;
@@ -8163,21 +8302,35 @@ class FilesTab {
   requestPreview(file, cx) {
     const git = this.services.git();
     const root = this.root;
-    if (!git || !root)
+    if (!this.active || !git || !root)
       return;
     if (this.previewFile !== file) {
+      this.image.clear();
       this.previewFile = null;
       this.preview = previewNotice("");
       this.code.clearSelection();
     }
     const request = ++this.previewRequest;
     this.loadingFile = file;
+    const context = this.services.context();
     const on = this.services.location()?.on ?? null;
     const newFile = this.newFile(file);
     cx.spawn(async (cx) => {
-      const preview = await readPreview(git, root, on, file, newFile);
-      if (request !== this.previewRequest || root !== this.root || this.activeFile() !== file)
+      const current = () => this.active && request === this.previewRequest && context === this.services.context() && this.activeFile() === file;
+      let preview = await readPreview(git, root, on, file, newFile);
+      if (!current())
         return;
+      if (preview.image) {
+        try {
+          await this.image.load(preview.image, current, cx);
+        } catch (error) {
+          preview = previewNotice(error instanceof Error ? error.message : String(error));
+        }
+      }
+      if (!current())
+        return;
+      if (!preview.image)
+        this.image.clear();
       this.loadingFile = null;
       this.previewFile = file;
       this.preview = preview;
@@ -8197,6 +8350,8 @@ class FilesTab {
     const file = this.selectedFile();
     if (file)
       this.showPreview(file, cx);
+    else
+      this.clearPreview();
   }
   setDirectory(path, expanded) {
     if (expanded)
@@ -8256,6 +8411,8 @@ class FilesTab {
     const file = this.selectedFile();
     if (file)
       this.showPreview(file, cx);
+    else
+      this.clearPreview();
   }
   editFilter(cx) {
     if (!this.applied()) {
@@ -8265,12 +8422,15 @@ class FilesTab {
       const file = this.selectedFile();
       if (file)
         this.showPreview(file, cx);
+      else
+        this.clearPreview();
       cx.notify();
       return;
     }
     const request = ++this.searchRequest;
     this.filter.cursor = 0;
     this.filter.searching = true;
+    this.showSelectedResult(cx);
     cx.timer.after(SEARCH_DEBOUNCE_MS, (cx) => {
       if (request === this.searchRequest)
         this.search(request, cx);
@@ -8318,8 +8478,10 @@ class FilesTab {
   }
   showSelectedResult(cx) {
     const result = this.filter.results[this.filter.cursor];
-    if (!result)
+    if (!result) {
+      this.clearPreview();
       return;
+    }
     this.reveal = result.line !== null;
     this.showPreview(result.path, cx);
   }
@@ -8483,7 +8645,7 @@ class FilesTab {
     this.blame.sync(this.services, path && selection ? { file: path, lines: selection.lines, revision: null } : null, cx);
   }
   message(text, color) {
-    return div17().flex_1().min_h(0).text_color(color).whitespace_normal().child(text);
+    return div18().flex_1().min_h(0).text_color(color).whitespace_normal().child(text);
   }
   treeMessage(look) {
     const { t } = look;
@@ -8500,8 +8662,8 @@ class FilesTab {
   treeLine(look, row, status) {
     const { t } = look;
     const indent = "  ".repeat(row.depth);
-    const marker = row.directory ? div17().text_color(t.hint).child(`${indent}${row.expanded ? GLYPH.expanded : GLYPH.collapsed} `) : status ? div17().text_color(statusColor(t, status)).font_weight(700).child(`${indent}${status[0]} `) : div17().child(`${indent}  `);
-    return h_flex15().flex_none().ml(-cols(look, this.horizontal)).child(marker).child(div17().text_color(status ? statusColor(t, status) : t.text).child(row.label));
+    const marker = row.directory ? div18().text_color(t.hint).child(`${indent}${row.expanded ? GLYPH.expanded : GLYPH.collapsed} `) : status ? div18().text_color(statusColor(t, status)).font_weight(700).child(`${indent}${status[0]} `) : div18().child(`${indent}  `);
+    return h_flex15().flex_none().ml(-cols(look, this.horizontal)).child(marker).child(div18().text_color(status ? statusColor(t, status) : t.text).child(row.label));
   }
   maxHorizontal() {
     const width = this.applied() ? Math.max(0, ...this.filter.results.map((result) => displayWidth(resultText(result)))) : Math.max(0, ...this.rows.map((row) => row.depth * 2 + 2 + displayWidth(row.label)));
@@ -8543,7 +8705,7 @@ class FilesTab {
       focused: true,
       row: ({ index }) => {
         const row = this.rows[index];
-        return row ? this.treeLine(look, row, statuses.get(row.path)) : div17();
+        return row ? this.treeLine(look, row, statuses.get(row.path)) : div18();
       },
       onSelect: (index, cx) => {
         this.setPane("explorer");
@@ -8571,10 +8733,10 @@ class FilesTab {
     const { t } = look;
     const element = h_flex15().id(`git-files-match-${offset}`).flex_none().h(look.row).min_w(0).whitespace_nowrap().overflow_hidden();
     if (row.kind === "group")
-      return element.child(div17().ml(-cols(look, this.horizontal)).text_color(t.accent).font_weight(700).child(countedTitle(row.label, row.count)));
+      return element.child(div18().ml(-cols(look, this.horizontal)).text_color(t.accent).font_weight(700).child(countedTitle(row.label, row.count)));
     const result = this.filter.results[row.index];
     const selected = row.index === this.filter.cursor;
-    return element.when(selected, (el) => el.bg(t.focus).font_weight(700)).hover((style) => style.bg(t.hover)).child(div17().flex_none().w(cols(look, 2)).child(selected ? GLYPH.marker : "")).child(h_flex15().ml(-cols(look, this.horizontal)).child(div17().text_color(t.text).child(`  ${result?.path ?? ""}`)).when(result?.line != null, (el) => el.child(div17().text_color(t.hint).child(`:${result?.line}`)))).on_click((_, cx) => {
+    return element.when(selected, (el) => el.bg(t.focus).font_weight(700)).hover((style) => style.bg(t.hover)).child(div18().flex_none().w(cols(look, 2)).child(selected ? GLYPH.marker : "")).child(h_flex15().ml(-cols(look, this.horizontal)).child(div18().text_color(t.text).child(`  ${result?.path ?? ""}`)).when(result?.line != null, (el) => el.child(div18().text_color(t.hint).child(`:${result?.line}`)))).on_click((_, cx) => {
       cx.stop_propagation();
       this.setPane("explorer");
       this.filter.cursor = row.index;
@@ -8609,7 +8771,7 @@ class FilesTab {
       this.setPane("explorer");
       this.moveResult(-steps, cx);
       cx.notify();
-    }).child(visible).when(!!bar, (el) => el.child(bar ?? div17()));
+    }).child(visible).when(!!bar, (el) => el.child(bar ?? div18()));
   }
   resultsBox(look) {
     this.horizontal = Math.min(this.horizontal, this.maxHorizontal());
@@ -8623,7 +8785,7 @@ class FilesTab {
     const path = this.previewPath();
     if (selection && path) {
       const name = path.split("/").pop() ?? path;
-      return div17().text_color(look.t.accent).font_weight(700).child(`${name}:${lineNumbersText(selection.lines)}`);
+      return div18().text_color(look.t.accent).font_weight(700).child(`${name}:${lineNumbersText(selection.lines)}`);
     }
     return this.activeFile() ?? "Preview";
   }
@@ -8638,6 +8800,8 @@ class FilesTab {
     const { t } = look;
     if (!this.previewPath())
       return this.message(this.activeFile() ? "Loading…" : "Select a file to preview it", t.hint);
+    if (this.preview.image)
+      return this.image.render();
     if (this.preview.notice)
       return this.message(this.preview.notice, t.hint);
     const match = this.matchTarget();
@@ -8665,7 +8829,7 @@ class FilesTab {
     const left = v_flex16().flex_1().min_h(0).min_w(0).child(v_flex16().flex_1().min_h(0).child(this.applied() ? this.resultsBox(look) : this.treeBox(look))).child(v_flex16().flex_1().min_h(0).child(this.workspaces.render(look).flex_1()));
     const preview = v_flex16().min_h(0).min_w(0).child(this.previewBox(look));
     const panes = size.wide ? h_flex15().flex_1().min_h(0).items_stretch().child(left.flex_none().w(`${35}%`)).child(preview.flex_1().h_full()) : v_flex16().flex_1().min_h(0).child(left.h(`${50}%`).flex_none()).child(preview.flex_1());
-    return v_flex16().size_full().min_h(0).min_w(0).child(div17().flex_none().h(rows(look, 3)).on_key_down((event, cx) => this.filterInputKey(event, cx)).on_mouse_down("left", (_, cx) => {
+    return v_flex16().size_full().min_h(0).min_w(0).child(div18().flex_none().h(rows(look, 3)).on_key_down((event, cx) => this.filterInputKey(event, cx)).on_mouse_down("left", (_, cx) => {
       this.openFilter();
       cx.notify();
     }).child(filterBar(look, { id: "git-files-filter", input: this.query, active: this.filtering }))).child(panes);
@@ -8678,7 +8842,7 @@ function resultText(result) {
 // src/ui/graph.ts
 import { h_flex as h_flex19, InputState as InputState4, v_flex as v_flex19 } from "gpui-base";
 import {
-  div as div21
+  div as div22
 } from "gpui-kit";
 
 // src/git/history-maintenance.ts
@@ -8731,7 +8895,7 @@ async function prepareHistory(git) {
 
 // src/ui/graph/inspect.ts
 import { h_flex as h_flex16, v_flex as v_flex17 } from "gpui-base";
-import { div as div18 } from "gpui-kit";
+import { div as div19 } from "gpui-kit";
 var DETAILS_CACHE_CAP = 64;
 var PREVIEW_CACHE_CAP = 8;
 var PREVIEW_TITLE_RESERVE = 6;
@@ -9112,7 +9276,7 @@ class Inspect {
     if (this.working)
       return "Uncommitted";
     if (this.error)
-      return div18().text_color(look.t.error).font_weight(700).child(`Commit details failed · ${firstLine(this.error)} · move selection to retry`);
+      return div19().text_color(look.t.error).font_weight(700).child(`Commit details failed · ${firstLine(this.error)} · move selection to retry`);
     return "Commit details";
   }
   followSelection(lines) {
@@ -9153,7 +9317,7 @@ class Inspect {
     }).on_scroll_wheel((event, cx) => this.wheelDetails(event, look, cx)).child(body));
   }
   detailRow(look, line, index, onFocus) {
-    const row = h_flex16().id(`git-commit-detail-${index}`).flex_none().h(look.row).min_w(0).overflow_hidden().whitespace_nowrap().children(spanElements(look, line.spans)).when(line.path !== undefined, (el) => el.child(div18().min_w(0).truncate().child(line.path ?? "")));
+    const row = h_flex16().id(`git-commit-detail-${index}`).flex_none().h(look.row).min_w(0).overflow_hidden().whitespace_nowrap().children(spanElements(look, line.spans)).when(line.path !== undefined, (el) => el.child(div19().min_w(0).truncate().child(line.path ?? "")));
     const change = line.change;
     if (change === undefined)
       return row;
@@ -9167,7 +9331,7 @@ class Inspect {
   previewTitle(look, width) {
     const titleWidth = Math.max(0, width - PREVIEW_TITLE_RESERVE);
     if (this.previewError)
-      return div18().text_color(look.t.error).font_weight(700).child(truncateToWidth(`Preview failed · ${firstLine(this.previewError)} · close and reopen to retry`, titleWidth));
+      return div19().text_color(look.t.error).font_weight(700).child(truncateToWidth(`Preview failed · ${firstLine(this.previewError)} · close and reopen to retry`, titleWidth));
     const shown = this.loadedPath ?? this.previewPath ?? "File";
     const language = this.preview ? this.diff.language() : "";
     const label = language ? `Preview · ${shown} · ${language}` : `Preview · ${shown}`;
@@ -9182,7 +9346,7 @@ class Inspect {
     const pane = (id, title, inner) => box(look, { id, title }, inner).flex_1().min_h(0).min_w(0);
     const binary = this.preview?.binary;
     if (binary)
-      return div18().flex_1().text_color(t.muted).child("Binary file — no text diff");
+      return div19().flex_1().text_color(t.muted).child("Binary file — no text diff");
     return (vertical ? v_flex17() : h_flex16()).flex_1().min_h(0).min_w(0).items_stretch().child(pane("git-commit-preview-before", "Before", panes.before)).child(pane("git-commit-preview-after", "After", panes.after));
   }
   renderPreview(look, size, onFocus) {
@@ -9201,7 +9365,7 @@ class Inspect {
 
 // src/ui/graph/lanes.ts
 import { h_flex as h_flex17, v_flex as v_flex18 } from "gpui-base";
-import { div as div19, PathBuilder as PathBuilder2 } from "gpui-kit";
+import { div as div20, PathBuilder as PathBuilder2 } from "gpui-kit";
 
 // src/ui/graph/layout.ts
 var LANE_CELLS = 2;
@@ -9350,7 +9514,7 @@ function glyphLine(look, cells, view, marks) {
   const visible = cells.slice(view.scroll, view.scroll + view.width);
   visible.forEach((cell, index) => {
     const mark = index === 0 ? marks[0] : index === visible.length - 1 ? marks[1] : "";
-    line.child(div19().flex_none().w(look.cell).text_color(mark ? look.t.hint : lane(look.t, cell.color)).child(mark || symbol(cell)));
+    line.child(div20().flex_none().w(look.cell).text_color(mark ? look.t.hint : lane(look.t, cell.color)).child(mark || symbol(cell)));
   });
   return line;
 }
@@ -9388,10 +9552,10 @@ function strokes(look, row, x) {
     else
       builder.cubic_bezier_to(x(edge.to), bottom, x(edge.from), 1.5 * look.row, x(edge.to), look.row);
   }
-  return [...paths].map(([color, builder]) => div19().absolute().inset_0().child(window.paint_path(builder.build(), lane(look.t, color)).size_full()));
+  return [...paths].map(([color, builder]) => div20().absolute().inset_0().child(window.paint_path(builder.build(), lane(look.t, color)).size_full()));
 }
 function dot(x, y, radius, color) {
-  return div19().absolute().left(x - radius).top(y - radius).w(radius * 2).h(radius * 2).rounded_full().bg(color);
+  return div20().absolute().left(x - radius).top(y - radius).w(radius * 2).h(radius * 2).rounded_full().bg(color);
 }
 function curveLanes(look, row, view) {
   const x = (column) => (laneCell(column) + 0.5 - view.scroll) * look.cell;
@@ -9400,7 +9564,7 @@ function curveLanes(look, row, view) {
   const color = lane(look.t, row.color);
   const center = 0.5 * look.row;
   const node = x(row.column);
-  const element = div19().relative().flex_none().w(cols(look, view.width)).h(ROW_HEIGHT * look.row).overflow_hidden().children(strokes(look, row, x));
+  const element = div20().relative().flex_none().w(cols(look, view.width)).h(ROW_HEIGHT * look.row).overflow_hidden().children(strokes(look, row, x));
   if (view.selected)
     element.child(dot(node, center, radius * 1.6, `${color.slice(0, 7)}46`));
   element.child(dot(node, center, radius, color));
@@ -9408,15 +9572,15 @@ function curveLanes(look, row, view) {
     element.child(dot(node, center, Math.max(0, radius - stroke), view.background));
   const [left, right] = clipMarks(view);
   if (left)
-    element.child(div19().absolute().top(0).left(0).text_color(look.t.hint).child(left));
+    element.child(div20().absolute().top(0).left(0).text_color(look.t.hint).child(left));
   if (right)
-    element.child(div19().absolute().top(0).left(cols(look, view.width - 1)).text_color(look.t.hint).child(right));
+    element.child(div20().absolute().top(0).left(cols(look, view.width - 1)).text_color(look.t.hint).child(right));
   return element;
 }
 
 // src/ui/graph/rows.ts
 import { h_flex as h_flex18 } from "gpui-base";
-import { div as div20 } from "gpui-kit";
+import { div as div21 } from "gpui-kit";
 var TIME_MIN_WIDTH = 56;
 var TIME_WIDTH = 14;
 var MIN_GRAPH_WIDTH = 3;
@@ -9486,7 +9650,7 @@ function titleSpans(look, commit, subjectWidth) {
   ];
 }
 function line(look, left, right, bold) {
-  return h_flex18().h(look.row).min_w(0).flex_1().overflow_hidden().whitespace_nowrap().when(bold, (el) => el.font_weight(700)).child(h_flex18().flex_1().min_w(0).overflow_hidden().children(spanElements(look, left))).when(!!right, (el) => el.children(spanElements(look, right ? [right] : [])).child(div20().flex_none().w(look.cell)));
+  return h_flex18().h(look.row).min_w(0).flex_1().overflow_hidden().whitespace_nowrap().when(bold, (el) => el.font_weight(700)).child(h_flex18().flex_1().min_w(0).overflow_hidden().children(spanElements(look, left))).when(!!right, (el) => el.children(spanElements(look, right ? [right] : [])).child(div21().flex_none().w(look.cell)));
 }
 function commitTitle(look, commit, text) {
   const textWidth = Math.max(0, text.width - text.gutter);
@@ -10161,7 +10325,7 @@ class GraphTab {
     }
     const anchor = this.state.anchor;
     if (anchor)
-      return h_flex19().child(`Commits from ${shortCommit(anchor)} · `).child(div21().id("git-graph-back").text_color(look.t.accent).font_weight(700).child("[Esc] Back to HEAD").on_click((_, cx) => {
+      return h_flex19().child(`Commits from ${shortCommit(anchor)} · `).child(div22().id("git-graph-back").text_color(look.t.accent).font_weight(700).child("[Esc] Back to HEAD").on_click((_, cx) => {
         cx.stop_propagation();
         this.leaveAnchor(cx);
         cx.notify();
@@ -10177,7 +10341,7 @@ class GraphTab {
     const text = this.historyError ? "Refresh to retry" : this.state.hasMore ? "[PgDn] Load more" : "";
     if (!text)
       return null;
-    return div21().id("git-graph-load-more").absolute().bottom(0).left(look.cell).h(look.row).bg(look.t.background).text_color(look.t.hint).whitespace_nowrap().child(text).on_click((_, cx) => {
+    return div22().id("git-graph-load-more").absolute().bottom(0).left(look.cell).h(look.row).bg(look.t.background).text_color(look.t.hint).whitespace_nowrap().child(text).on_click((_, cx) => {
       cx.stop_propagation();
       if (this.historyError)
         return;
@@ -10187,7 +10351,7 @@ class GraphTab {
   }
   lanes(look, row, view) {
     if (!row || view.width <= 0)
-      return div21().flex_none().w(cols(look, view.width));
+      return div22().flex_none().w(cols(look, view.width));
     return this.showGraph() ? curveLanes(look, row, view) : glyphLanes(look, row, view);
   }
   commitRow(look, row, first) {
@@ -10216,7 +10380,7 @@ class GraphTab {
       this.clickRow(row, cx);
       if (this.selected())
         this.services.commands().shortcut("actions", cx);
-    }).child(this.lanes(look, this.state.layout[row], view)).child(div21().flex_none().w(look.cell));
+    }).child(this.lanes(look, this.state.layout[row], view)).child(div22().flex_none().w(look.cell));
     if (!commit)
       return element;
     return element.child(v_flex19().flex_1().min_w(0).child(commitTitle(look, commit, text)).child(commitDetail(look, commit, text)));
@@ -10258,7 +10422,7 @@ class GraphTab {
       this.height = height;
       this.width = width;
       cx.notify();
-    }).on_scroll_wheel((event, cx) => this.listWheel(event, look, cx)).child(list).when(!!bar, (el) => el.child(bar ?? div21()));
+    }).on_scroll_wheel((event, cx) => this.listWheel(event, look, cx)).child(list).when(!!bar, (el) => el.child(bar ?? div22()));
   }
   commitsBox(look) {
     const focused = !this.inspect.focus && !this.filtering && !this.workspaces.isFocused();
@@ -10289,7 +10453,7 @@ class GraphTab {
 
 // src/ui/overlay.ts
 import { h_flex as h_flex20, InputState as InputState5, v_flex as v_flex20 } from "gpui-base";
-import { div as div22 } from "gpui-kit";
+import { div as div23 } from "gpui-kit";
 var PICKER_ROWS = 20;
 var FIELD_ROWS = 3;
 function toneColor(look, tone) {
@@ -10308,7 +10472,7 @@ function toneColor(look, tone) {
 }
 function lineElement(look, line) {
   const value = typeof line === "string" ? { text: line, tone: "text" } : line;
-  return div22().flex_none().min_h(look.row).whitespace_normal().text_color(toneColor(look, value.tone)).when(!!value.bold, (el) => el.font_weight(700)).child(value.text);
+  return div23().flex_none().min_h(look.row).whitespace_normal().text_color(toneColor(look, value.tone)).when(!!value.bold, (el) => el.font_weight(700)).child(value.text);
 }
 function lines2(look, content) {
   const split = [];
@@ -10477,16 +10641,16 @@ class Overlay {
     if (search)
       body.child(search);
     if (columns)
-      body.child(div22().flex_none().h(look.row).bg(t.header).text_color(t.accent).font_weight(700).whitespace_nowrap().child(`  ${padToWidth(columns.label, columns.width)}${columns.status}`));
+      body.child(div23().flex_none().h(look.row).bg(t.header).text_color(t.accent).font_weight(700).whitespace_nowrap().child(`  ${padToWidth(columns.label, columns.width)}${columns.status}`));
     body.child(v_flex20().h(rows(look, visible)).flex_none().child(this.list.render(look, {
       length: all.length,
       focused: true,
       row: ({ index }) => {
         const row = all[index];
         if (!row)
-          return div22();
+          return div23();
         const width = columns?.width ?? 0;
-        return h_flex20().flex_1().min_w(0).child(div22().flex_none().when(width > 0, (el) => el.w(cols(look, width))).when(width === 0, (el) => el.flex_1()).truncate().text_color(row.disabled ? t.muted : t.text).child(row.label)).when(!!row.status, (el) => el.child(div22().flex_none().text_color(row.disabled ? t.warning : t.secondary).child(row.status ?? "")));
+        return h_flex20().flex_1().min_w(0).child(div23().flex_none().when(width > 0, (el) => el.w(cols(look, width))).when(width === 0, (el) => el.flex_1()).truncate().text_color(row.disabled ? t.muted : t.text).child(row.label)).when(!!row.status, (el) => el.child(div23().flex_none().text_color(row.disabled ? t.warning : t.secondary).child(row.status ?? "")));
       },
       onActivate: (_, cx) => this.choose(spec, cx)
     })));
@@ -10517,7 +10681,7 @@ class Overlay {
     const spec = this.spec;
     if (!spec)
       return null;
-    const title = typeof spec.title === "string" ? spec.title : div22().text_color(toneColor(look, spec.title.tone)).font_weight(700).child(spec.title.text);
+    const title = typeof spec.title === "string" ? spec.title : div23().text_color(toneColor(look, spec.title.tone)).font_weight(700).child(spec.title.text);
     const width = spec.width ?? (spec.kind === "picker" ? DIALOG.wide : DIALOG.medium);
     const frame = dialogFrame(look, { id: "git-dialog", title, width }, this.body(look, spec)).track_focus(this.handle).on_key_down((event, cx) => this.key(event, cx));
     return v_flex20().id("git-dialog-layer").absolute().inset_0().items_center().justify_center().on_mouse_down("left", (_, cx) => cx.stop_propagation()).child(frame);
@@ -10526,7 +10690,7 @@ class Overlay {
 
 // src/ui/settings.ts
 import { h_flex as h_flex21, v_flex as v_flex21 } from "gpui-base";
-import { div as div23 } from "gpui-kit";
+import { div as div24 } from "gpui-kit";
 var LABEL_WIDTH = 24;
 
 class SettingsTab {
@@ -10614,7 +10778,7 @@ class SettingsTab {
         this.handle.focus();
         row.activate(cx);
         cx.notify();
-      }).child(h_flex21().h(look.row).whitespace_nowrap().child(div23().font_weight(700).child(padToWidth(`  ${row.label}`, LABEL_WIDTH))).child(div23().when(row.on, (el) => el.bg(t.accent).text_color(t.textInverse).font_weight(700)).when(!row.on, (el) => el.bg(t.inert).text_color(t.hint)).child(row.control)).child(div23().text_color(t.hint).child(`  ${row.status}`))).child(div23().h(look.row).truncate().text_color(t.secondary).child(`${" ".repeat(LABEL_WIDTH)}${row.description}`)));
+      }).child(h_flex21().h(look.row).whitespace_nowrap().child(div24().font_weight(700).child(padToWidth(`  ${row.label}`, LABEL_WIDTH))).child(div24().when(row.on, (el) => el.bg(t.accent).text_color(t.textInverse).font_weight(700)).when(!row.on, (el) => el.bg(t.inert).text_color(t.hint)).child(row.control)).child(div24().text_color(t.hint).child(`  ${row.status}`))).child(div24().h(look.row).truncate().text_color(t.secondary).child(`${" ".repeat(LABEL_WIDTH)}${row.description}`)));
     return box(look, { id: "git-settings", title: "Settings", focused: this.handle.is_focused() }, body).size_full().track_focus(this.handle).on_key_down((event, cx) => this.key(event, cx));
   }
 }
@@ -10622,9 +10786,9 @@ class SettingsTab {
 // src/ui/workspaces.ts
 import { Button as Button4, h_flex as h_flex23 } from "gpui-base";
 import {
-  div as div25
+  div as div26
 } from "gpui-kit";
-import { exec as exec4, pickFolder } from "herdr";
+import { exec as exec5, pickFolder } from "herdr";
 
 // src/git/workspaces.ts
 var READ4 = ["--no-optional-locks", "-c", "core.fsmonitor=false", "-c", "diff.autoRefreshIndex=false"];
@@ -10734,7 +10898,7 @@ async function inspectProject(gitAt, root, previous, fresh, repository) {
 
 // src/ui/workspaces/picker.ts
 import { h_flex as h_flex22, v_flex as v_flex22 } from "gpui-base";
-import { div as div24 } from "gpui-kit";
+import { div as div25 } from "gpui-kit";
 
 // src/ui/workspaces/rows.ts
 function rowKey2(row) {
@@ -10819,17 +10983,17 @@ function rowElement2(look, row, index) {
   const { t } = look;
   const line = h_flex22().flex_1().min_w(0).overflow_hidden();
   if (index < 9)
-    line.child(div24().text_color(t.hint).child("[")).child(div24().text_color(t.accent).font_weight(700).child(String(index + 1))).child(div24().text_color(t.hint).child("] "));
+    line.child(div25().text_color(t.hint).child("[")).child(div25().text_color(t.accent).font_weight(700).child(String(index + 1))).child(div25().text_color(t.hint).child("] "));
   else
-    line.child(div24().child("    "));
+    line.child(div25().child("    "));
   if (!row)
     return line;
   const name = pathLabel(row.path);
   if (row.kind.type === "current")
-    return line.child(div24().truncate().child(`Current · ${name}`));
+    return line.child(div25().truncate().child(`Current · ${name}`));
   if (row.kind.type === "worktree")
     line.child("  ");
-  return line.items_center().child(iconCell(look, row.kind.type === "project" ? "repository" : "worktree")).child(div24().truncate().child(` ${name}`));
+  return line.items_center().child(iconCell(look, row.kind.type === "project" ? "repository" : "worktree")).child(div25().truncate().child(` ${name}`));
 }
 function openWorkspacePicker(overlay, options) {
   const list = new ListViewport("git-workspace-picker");
@@ -10945,7 +11109,7 @@ function message3(error) {
   return error instanceof Error ? error.message : String(error);
 }
 function gitAt(on) {
-  return (cwd) => (args) => exec4("git", args, { cwd, on });
+  return (cwd) => (args) => exec5("git", args, { cwd, on });
 }
 function line2(look, spans) {
   return h_flex23().flex_none().h(look.row).min_w(0).whitespace_nowrap().overflow_hidden().children(spanElements(look, spans));
@@ -11385,10 +11549,10 @@ class WorkspacesBox {
     const { t } = look;
     const row = this.rows[entry.index];
     if (!row)
-      return div25();
+      return div26();
     const focusedRow = focused && entry.index === this.selected;
     const index = entry.index;
-    const element = div25().id(`git-workspace-row-${index}`).absolute().left(0).right(0).top(rows(look, entry.top - this.scroll)).h(rows(look, entry.height)).flex().flex_col().overflow_hidden().bg(focusedRow ? t.focus : t.panel).when(focusedRow, (el) => el.font_weight(700)).when(!focusedRow, (el) => el.hover((style) => style.bg(t.hover))).on_hover((hovered, cx) => {
+    const element = div26().id(`git-workspace-row-${index}`).absolute().left(0).right(0).top(rows(look, entry.top - this.scroll)).h(rows(look, entry.height)).flex().flex_col().overflow_hidden().bg(focusedRow ? t.focus : t.panel).when(focusedRow, (el) => el.font_weight(700)).when(!focusedRow, (el) => el.hover((style) => style.bg(t.hover))).on_hover((hovered, cx) => {
       if (hovered)
         this.hovered = index;
       else if (this.hovered === index)
@@ -11403,7 +11567,7 @@ class WorkspacesBox {
     return upstream ? element.child(upstream) : element;
   }
   header(look, top, child) {
-    return div25().absolute().left(0).right(0).top(rows(look, top - this.scroll)).h(look.row).child(child);
+    return div26().absolute().left(0).right(0).top(rows(look, top - this.scroll)).h(look.row).child(child);
   }
   addButton(look) {
     const { t } = look;
@@ -11416,14 +11580,14 @@ class WorkspacesBox {
   }
   sections(look) {
     const { t } = look;
-    const heading = (text) => div25().text_color(t.accent).font_weight(700).child(text);
+    const heading = (text) => div26().text_color(t.accent).font_weight(700).child(text);
     const wide = this.width >= ADD_WIDE;
     const projects = h_flex23().w_full().justify_between().child(heading("Projects"));
     if (wide)
       projects.child(this.addButton(look));
     const children = [
       this.header(look, 0, heading("Current")),
-      this.header(look, SEPARATOR, div25().text_color(t.rule).overflow_hidden().whitespace_nowrap().child("─".repeat(Math.max(1, this.width)))),
+      this.header(look, SEPARATOR, div26().text_color(t.rule).overflow_hidden().whitespace_nowrap().child("─".repeat(Math.max(1, this.width)))),
       this.header(look, PROJECTS_HEADER, projects)
     ];
     if (!wide)
@@ -11438,7 +11602,7 @@ class WorkspacesBox {
     const height = this.height || content;
     const visible = placed.filter((entry) => entry.top + entry.height > this.scroll && entry.top < this.scroll + height);
     this.page = Math.max(1, visible.length);
-    const body = div25().id("git-workspaces-list").relative().flex_1().min_h(0).min_w(0).overflow_hidden().on_size_change((size, cx) => {
+    const body = div26().id("git-workspaces-list").relative().flex_1().min_h(0).min_w(0).overflow_hidden().on_size_change((size, cx) => {
       const rows = Math.max(1, Math.floor(size.height / look.screenRow));
       const width = Math.max(1, Math.floor(size.width / look.screenCell));
       if (rows === this.height && width === this.width)
@@ -11543,7 +11707,7 @@ class Session {
         if (repository?.state !== "ready")
           return null;
         const on = this.on;
-        return (args) => exec5("git", args, { cwd: repository.root, on, timeout: 300000 });
+        return (args) => exec6("git", args, { cwd: repository.root, on, timeout: 300000 });
       },
       mutate: (context, label, action, cx) => this.mutate(context, label, action, cx),
       busy: () => this.operation,
@@ -11663,7 +11827,7 @@ class Session {
     const cwd = where.cwd;
     cx.spawn(async (cx) => {
       try {
-        const git = (args) => exec5("git", args, { cwd, on: where.on });
+        const git = (args) => exec6("git", args, { cwd, on: where.on });
         const repository = await readRepository(git);
         const facts = repository.state === "ready" ? await readFacts(git) : EMPTY_FACTS;
         if (!current())
@@ -11686,7 +11850,7 @@ class Session {
   applyRepository(repository, facts, cx) {
     const on = this.on;
     this.repository = repository;
-    this.readGit = repository.state === "ready" ? shareSummaryReads((args) => exec5("git", args, { cwd: repository.root, on })) : null;
+    this.readGit = repository.state === "ready" ? shareSummaryReads((args) => exec6("git", args, { cwd: repository.root, on })) : null;
     this.facts = facts;
     this.repositoryError = null;
     this.loading = false;
@@ -11726,7 +11890,7 @@ class Session {
     this.loading = false;
     cx.spawn(async (cx) => {
       try {
-        const git = (args) => exec5("git", args, { cwd: repository.root, on });
+        const git = (args) => exec6("git", args, { cwd: repository.root, on });
         const latest = await readRepository(git);
         if (!current())
           return;
@@ -11789,7 +11953,7 @@ class Git extends View {
     this.session = null;
   }
   render(cx) {
-    return this.session?.render(cx) ?? div26();
+    return this.session?.render(cx) ?? div27();
   }
 }
 export {

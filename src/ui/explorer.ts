@@ -4,6 +4,7 @@ import { fileLanguage, readFiles } from "../git/files.ts";
 import { lineNumbersText, openCopySelection, SelectionBlame } from "./changes/review.ts";
 import { CodeView } from "./code-view.ts";
 import { showResult } from "./commands/result.ts";
+import { ImagePreview } from "./explorer/image.ts";
 import { openLineHistory } from "./explorer/line-history.ts";
 import { type FilePreview, previewNotice, readPreview } from "./explorer/preview.ts";
 import {
@@ -65,6 +66,7 @@ export class FilesTab implements TabView {
   private loadingFile: string | null = null;
   private preview: FilePreview = previewNotice("");
   private previewRequest = 0;
+  private readonly image = new ImagePreview();
   private reveal = false;
   private readonly code = new CodeView("git-files-preview");
   private readonly query: InputState;
@@ -107,6 +109,9 @@ export class FilesTab implements TabView {
   deactivate(_cx: AsyncContext): void {
     this.active = false;
     this.listRequest++;
+    this.previewRequest++;
+    this.loadingFile = null;
+    if (this.preview.image) this.clearPreview();
     if (this.filtering) this.closeFilter();
   }
 
@@ -115,6 +120,7 @@ export class FilesTab implements TabView {
   }
 
   release(): void {
+    this.image.clear();
     this.active = false;
     this.listRequest++;
     this.previewRequest++;
@@ -161,6 +167,7 @@ export class FilesTab implements TabView {
   }
 
   private reset(cx: AsyncContext): void {
+    this.image.clear();
     this.listRequest++;
     this.previewRequest++;
     this.searchRequest++;
@@ -250,6 +257,7 @@ export class FilesTab implements TabView {
   }
 
   private clearPreview(): void {
+    this.image.clear();
     this.previewRequest++;
     this.loadingFile = null;
     this.previewFile = null;
@@ -269,19 +277,35 @@ export class FilesTab implements TabView {
   private requestPreview(file: string, cx: AsyncContext): void {
     const git = this.services.git();
     const root = this.root;
-    if (!git || !root) return;
+    if (!this.active || !git || !root) return;
     if (this.previewFile !== file) {
+      this.image.clear();
       this.previewFile = null;
       this.preview = previewNotice("");
       this.code.clearSelection();
     }
     const request = ++this.previewRequest;
     this.loadingFile = file;
+    const context = this.services.context();
     const on = this.services.location()?.on ?? null;
     const newFile = this.newFile(file);
     cx.spawn(async (cx) => {
-      const preview = await readPreview(git, root, on, file, newFile);
-      if (request !== this.previewRequest || root !== this.root || this.activeFile() !== file) return;
+      const current = () =>
+        this.active &&
+        request === this.previewRequest &&
+        context === this.services.context() &&
+        this.activeFile() === file;
+      let preview = await readPreview(git, root, on, file, newFile);
+      if (!current()) return;
+      if (preview.image) {
+        try {
+          await this.image.load(preview.image, current, cx);
+        } catch (error) {
+          preview = previewNotice(error instanceof Error ? error.message : String(error));
+        }
+      }
+      if (!current()) return;
+      if (!preview.image) this.image.clear();
       this.loadingFile = null;
       this.previewFile = file;
       this.preview = preview;
@@ -300,6 +324,7 @@ export class FilesTab implements TabView {
     this.list.selected = Math.max(0, Math.min(index, this.rows.length - 1));
     const file = this.selectedFile();
     if (file) this.showPreview(file, cx);
+    else this.clearPreview();
   }
 
   private setDirectory(path: string, expanded: boolean): void {
@@ -354,6 +379,7 @@ export class FilesTab implements TabView {
     this.closeFilter();
     const file = this.selectedFile();
     if (file) this.showPreview(file, cx);
+    else this.clearPreview();
   }
 
   private editFilter(cx: AsyncContext): void {
@@ -363,12 +389,14 @@ export class FilesTab implements TabView {
       this.reveal = false;
       const file = this.selectedFile();
       if (file) this.showPreview(file, cx);
+      else this.clearPreview();
       cx.notify();
       return;
     }
     const request = ++this.searchRequest;
     this.filter.cursor = 0;
     this.filter.searching = true;
+    this.showSelectedResult(cx);
     cx.timer.after(SEARCH_DEBOUNCE_MS, (cx) => {
       if (request === this.searchRequest) this.search(request, cx);
     });
@@ -415,7 +443,10 @@ export class FilesTab implements TabView {
 
   private showSelectedResult(cx: AsyncContext): void {
     const result = this.filter.results[this.filter.cursor];
-    if (!result) return;
+    if (!result) {
+      this.clearPreview();
+      return;
+    }
     this.reveal = result.line !== null;
     this.showPreview(result.path, cx);
   }
@@ -805,6 +836,7 @@ export class FilesTab implements TabView {
     const { t } = look;
     if (!this.previewPath())
       return this.message(this.activeFile() ? "Loading…" : "Select a file to preview it", t.hint);
+    if (this.preview.image) return this.image.render();
     if (this.preview.notice) return this.message(this.preview.notice, t.hint);
     const match = this.matchTarget();
     if (this.reveal && match) {
