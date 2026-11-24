@@ -4654,235 +4654,6 @@ ${paths.slice(0, 5).join(`
   }
 }
 
-// src/ui/commands/update.ts
-import { appHome as appHome2, checking, exec as exec2, notify as notify2, readTextFile, writeTextFile } from "herdr";
-
-// src/runtime/mod-release.ts
-import { createHash } from "crypto";
-
-// src/version.ts
-var VERSION = "0.1.0";
-var BUNDLE_ASSET = "main.js";
-var BUNDLE_LIMIT = 1024 * 1024;
-function bundleHeader(version) {
-  return `// Herdr Git Mods v${version}
-`;
-}
-
-// src/runtime/mod-release.ts
-var REPO = "JeHwanYoo/herdr-git-mods";
-var LATEST = `https://api.github.com/repos/${REPO}/releases/latest`;
-var TAG = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
-function object(value) {
-  return typeof value === "object" && value !== null;
-}
-function newerVersion(candidate, current) {
-  const parts = candidate.slice(1).split(".").map(BigInt);
-  const installed = current.split(".").map(BigInt);
-  for (const [index, part] of installed.entries()) {
-    const next = parts[index];
-    if (next !== undefined && next !== part)
-      return next > part;
-  }
-  return false;
-}
-async function latestRelease(current, download) {
-  const data = JSON.parse(await download(LATEST));
-  if (!object(data) || typeof data.tag_name !== "string" || !TAG.test(data.tag_name) || data.draft !== false || data.prerelease !== false) {
-    throw new Error("GitHub did not return a stable release.");
-  }
-  const tag = data.tag_name;
-  if (!newerVersion(tag, current))
-    return null;
-  const asset = Array.isArray(data.assets) ? data.assets.find((entry) => object(entry) && entry.name === BUNDLE_ASSET) : null;
-  if (!object(asset) || asset.state !== "uploaded" || typeof asset.size !== "number" || asset.size <= 0 || asset.size > BUNDLE_LIMIT || typeof asset.digest !== "string" || !/^sha256:[a-f0-9]{64}$/.test(asset.digest)) {
-    throw new Error(`${tag} has no verifiable ${BUNDLE_ASSET} release asset.`);
-  }
-  return { tag, sha256: asset.digest.slice("sha256:".length) };
-}
-async function installRelease(current, release, file, download) {
-  if (!TAG.test(release.tag) || !newerVersion(release.tag, current)) {
-    throw new Error("The release is no longer newer than this version.");
-  }
-  const installed = await file.read();
-  if (installed === null || installed.split(/\r?\n/, 1)[0] !== bundleHeader(current).trimEnd()) {
-    throw new Error("The installed bundle changed. Reopen Git before updating.");
-  }
-  const bundle = await download(`https://github.com/${REPO}/releases/download/${release.tag}/${BUNDLE_ASSET}`);
-  const sha256 = createHash("sha256").update(bundle).digest("hex");
-  if (sha256 !== release.sha256 || !bundle.startsWith(bundleHeader(release.tag.slice(1)))) {
-    throw new Error(`The downloaded bundle failed verification for ${release.tag}.`);
-  }
-  await file.replace(bundle, installed);
-}
-
-// src/ui/commands/host.ts
-function errorMessage2(error) {
-  return error instanceof Error ? error.message : String(error);
-}
-
-// src/ui/commands/update.ts
-var UPDATE_INTERVAL = 30 * 60 * 1000;
-var LAST_CHECK = "git-release-check";
-var LAST_NOTICE = "git-release-notice";
-var TITLE = "Update Herdr Git Mods";
-async function download(url) {
-  const result = await exec2("curl", [
-    "-q",
-    "--silent",
-    "--show-error",
-    "--fail",
-    "--location",
-    "--max-redirs",
-    "3",
-    "--proto",
-    "=https",
-    "--proto-redir",
-    "=https",
-    "--connect-timeout",
-    "10",
-    "--max-time",
-    "30",
-    "--max-filesize",
-    String(BUNDLE_LIMIT),
-    url
-  ], { cwd: appHome2(), timeout: 35000 });
-  if (result.code !== 0)
-    throw new Error(result.stderr.trim() || "GitHub request failed.");
-  return result.stdout;
-}
-
-class ModUpdate {
-  overlay;
-  pending = null;
-  available = null;
-  installing = false;
-  active = true;
-  constructor(overlay) {
-    this.overlay = overlay;
-  }
-  release() {
-    this.active = false;
-  }
-  status() {
-    if (this.installing)
-      return "Installing update…";
-    if (this.pending)
-      return "Checking GitHub…";
-    return this.available ? `${this.available.tag} available` : null;
-  }
-  check() {
-    if (this.pending)
-      return this.pending;
-    localStorage.setItem(LAST_CHECK, String(Date.now()));
-    this.pending = latestRelease(VERSION, download).then((release) => {
-      this.available = release;
-      return release;
-    }).finally(() => {
-      this.pending = null;
-    });
-    return this.pending;
-  }
-  background(cx) {
-    if (checking() || !this.active || this.installing)
-      return;
-    cx.spawn(async (cx) => {
-      const elapsed = Date.now() - Number(localStorage.getItem(LAST_CHECK));
-      if (elapsed >= 0 && elapsed < UPDATE_INTERVAL)
-        return;
-      let release;
-      try {
-        release = await this.check();
-      } catch {
-        if (this.active)
-          cx.notify();
-        return;
-      }
-      if (!this.active)
-        return;
-      if (release && localStorage.getItem(LAST_NOTICE) !== release.tag) {
-        localStorage.setItem(LAST_NOTICE, release.tag);
-        notify2({ title: `Herdr Git Mods ${release.tag} is available`, body: "Open Git Settings to install it." });
-      }
-      cx.notify();
-    });
-  }
-  open(cx) {
-    if (this.installing)
-      return;
-    const dialog = this.progress("Checking GitHub Releases…");
-    cx.spawn(async (cx) => {
-      try {
-        const release = await this.check();
-        if (!this.active || this.overlay.current() !== dialog)
-          return;
-        if (release)
-          this.confirm(release);
-        else
-          showResult(this.overlay, "Update check", true, `Herdr Git Mods v${VERSION} is up to date.`, undefined, cx);
-      } catch (error) {
-        if (!this.active || this.overlay.current() !== dialog)
-          return;
-        showResult(this.overlay, "Update check", false, errorMessage2(error));
-      }
-      cx.notify();
-    });
-  }
-  progress(message) {
-    const dialog = {
-      kind: "confirm",
-      title: TITLE,
-      width: DIALOG.medium,
-      lines: [message],
-      primary: "",
-      secondary: "[Esc] Close",
-      enabled: () => false,
-      onConfirm: () => {}
-    };
-    this.overlay.open(dialog);
-    return dialog;
-  }
-  confirm(release) {
-    this.overlay.open({
-      kind: "confirm",
-      title: TITLE,
-      width: DIALOG.medium,
-      lines: [`v${VERSION} → ${release.tag}`, "", "Install the GitHub release and reload Git?"],
-      primary: "[Enter] Install",
-      onConfirm: (cx) => this.install(release, cx)
-    });
-  }
-  install(release, cx) {
-    if (this.installing)
-      return;
-    this.installing = true;
-    const dialog = this.progress(`Installing ${release.tag}…`);
-    cx.spawn(async (cx) => {
-      try {
-        const path = `${appHome2()}/mods/git/${BUNDLE_ASSET}`;
-        await installRelease(VERSION, release, { read: () => readTextFile(path), replace: (text, expected) => writeTextFile(path, text, expected) }, download);
-        this.available = null;
-        if (!this.active)
-          return;
-        notify2({ title: `Installed Herdr Git Mods ${release.tag}`, level: "success" });
-        if (this.overlay.current() === dialog)
-          this.overlay.close(cx);
-      } catch (error) {
-        if (!this.active)
-          return;
-        if (this.overlay.current() === dialog)
-          showResult(this.overlay, TITLE, false, errorMessage2(error));
-        else
-          notify2({ title: "Herdr Git Mods update failed", body: errorMessage2(error), level: "error" });
-      } finally {
-        this.installing = false;
-      }
-      if (this.active)
-        cx.notify();
-    });
-  }
-}
-
 // src/git/workflows.ts
 function local(reference) {
   return reference.startsWith("refs/heads/") ? reference.slice("refs/heads/".length) : reference;
@@ -5363,6 +5134,11 @@ class Dialog {
 }
 function inputBox(look, id, title, input, focused = false) {
   return box(look, { id, title, focused }, h_flex9().h(look.row).child(textInput(look, input))).flex_none();
+}
+
+// src/ui/commands/host.ts
+function errorMessage2(error) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 // src/ui/commands/branch.ts
@@ -5893,6 +5669,17 @@ import { div as div12 } from "gpui-kit";
 // src/ui/shell.ts
 import { Button as Button3, h_flex as h_flex12, v_flex as v_flex11 } from "gpui-base";
 import { div as div11 } from "gpui-kit";
+
+// src/version.ts
+var VERSION = "0.1.0";
+var BUNDLE_ASSET = "main.js";
+var BUNDLE_LIMIT = 1024 * 1024;
+function bundleHeader(version) {
+  return `// Herdr Git Mods v${version}
+`;
+}
+
+// src/ui/shell.ts
 var TAB_ORDER = ["changes", "graph", "files", "settings"];
 var TAB_LABELS = {
   changes: { label: "Changes", shortcut: "1" },
@@ -7277,6 +7064,226 @@ class TargetPicker {
       this.flows.reset(choice.reset, cx);
     else
       this.host.confirm(this.command, choice.operation, cx);
+  }
+}
+
+// src/ui/commands/update.ts
+import { appHome as appHome2, checking, exec as exec2, notify as notify2, readTextFile, writeTextFile } from "herdr";
+
+// src/runtime/mod-release.ts
+import { createHash } from "crypto";
+var REPO = "JeHwanYoo/herdr-git-mods";
+var LATEST = `https://api.github.com/repos/${REPO}/releases/latest`;
+var TAG = /^v(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
+function object(value) {
+  return typeof value === "object" && value !== null;
+}
+function newerVersion(candidate, current) {
+  const parts = candidate.slice(1).split(".").map(BigInt);
+  const installed = current.split(".").map(BigInt);
+  for (const [index, part] of installed.entries()) {
+    const next = parts[index];
+    if (next !== undefined && next !== part)
+      return next > part;
+  }
+  return false;
+}
+async function latestRelease(current, download) {
+  const data = JSON.parse(await download(LATEST));
+  if (!object(data) || typeof data.tag_name !== "string" || !TAG.test(data.tag_name) || data.draft !== false || data.prerelease !== false) {
+    throw new Error("GitHub did not return a stable release.");
+  }
+  const tag = data.tag_name;
+  if (!newerVersion(tag, current))
+    return null;
+  const asset = Array.isArray(data.assets) ? data.assets.find((entry) => object(entry) && entry.name === BUNDLE_ASSET) : null;
+  if (!object(asset) || asset.state !== "uploaded" || typeof asset.size !== "number" || asset.size <= 0 || asset.size > BUNDLE_LIMIT || typeof asset.digest !== "string" || !/^sha256:[a-f0-9]{64}$/.test(asset.digest)) {
+    throw new Error(`${tag} has no verifiable ${BUNDLE_ASSET} release asset.`);
+  }
+  return { tag, sha256: asset.digest.slice("sha256:".length) };
+}
+async function installRelease(current, release, file, download) {
+  if (!TAG.test(release.tag) || !newerVersion(release.tag, current)) {
+    throw new Error("The release is no longer newer than this version.");
+  }
+  const installed = await file.read();
+  if (installed === null || installed.split(/\r?\n/, 1)[0] !== bundleHeader(current).trimEnd()) {
+    throw new Error("The installed bundle changed. Reopen Git before updating.");
+  }
+  const bundle = await download(`https://github.com/${REPO}/releases/download/${release.tag}/${BUNDLE_ASSET}`);
+  const sha256 = createHash("sha256").update(bundle).digest("hex");
+  if (sha256 !== release.sha256 || !bundle.startsWith(bundleHeader(release.tag.slice(1)))) {
+    throw new Error(`The downloaded bundle failed verification for ${release.tag}.`);
+  }
+  await file.replace(bundle, installed);
+}
+
+// src/ui/commands/update.ts
+var UPDATE_INTERVAL = 30 * 60 * 1000;
+var UPDATE_TICK = 60 * 1000;
+var LAST_CHECK = "git-release-check";
+var LAST_NOTICE = "git-release-notice";
+var TITLE = "Update Herdr Git Mods";
+async function download(url) {
+  const result = await exec2("curl", [
+    "-q",
+    "--silent",
+    "--show-error",
+    "--fail",
+    "--location",
+    "--max-redirs",
+    "3",
+    "--proto",
+    "=https",
+    "--proto-redir",
+    "=https",
+    "--connect-timeout",
+    "10",
+    "--max-time",
+    "30",
+    "--max-filesize",
+    String(BUNDLE_LIMIT),
+    url
+  ], { cwd: appHome2(), timeout: 35000 });
+  if (result.code !== 0)
+    throw new Error(result.stderr.trim() || "GitHub request failed.");
+  return result.stdout;
+}
+
+class ModUpdate {
+  overlay;
+  pending = null;
+  available = null;
+  installing = false;
+  active = true;
+  constructor(overlay) {
+    this.overlay = overlay;
+  }
+  release() {
+    this.active = false;
+  }
+  status() {
+    if (this.installing)
+      return "Installing update…";
+    if (this.pending)
+      return "Checking GitHub…";
+    return this.available ? `${this.available.tag} available` : null;
+  }
+  check() {
+    if (this.pending)
+      return this.pending;
+    localStorage.setItem(LAST_CHECK, String(Date.now()));
+    this.pending = latestRelease(VERSION, download).then((release) => {
+      this.available = release;
+      return release;
+    }).finally(() => {
+      this.pending = null;
+    });
+    return this.pending;
+  }
+  watch(cx) {
+    if (checking())
+      return;
+    this.background(cx);
+    cx.timer.every(UPDATE_TICK, (cx) => this.background(cx));
+  }
+  background(cx) {
+    if (!this.active || this.installing)
+      return;
+    cx.spawn(async (cx) => {
+      const elapsed = Date.now() - Number(localStorage.getItem(LAST_CHECK));
+      if (elapsed >= 0 && elapsed < UPDATE_INTERVAL)
+        return;
+      let release;
+      try {
+        release = await this.check();
+      } catch {
+        if (this.active)
+          cx.notify();
+        return;
+      }
+      if (!this.active)
+        return;
+      if (release && localStorage.getItem(LAST_NOTICE) !== release.tag) {
+        localStorage.setItem(LAST_NOTICE, release.tag);
+        notify2({ title: `Herdr Git Mods ${release.tag} is available`, body: "Open Git Settings to install it." });
+      }
+      cx.notify();
+    });
+  }
+  open(cx) {
+    if (this.installing)
+      return;
+    const dialog = this.progress("Checking GitHub Releases…");
+    cx.spawn(async (cx) => {
+      try {
+        const release = await this.check();
+        if (!this.active || this.overlay.current() !== dialog)
+          return;
+        if (release)
+          this.confirm(release);
+        else
+          showResult(this.overlay, "Update check", true, `Herdr Git Mods v${VERSION} is up to date.`, undefined, cx);
+      } catch (error) {
+        if (!this.active || this.overlay.current() !== dialog)
+          return;
+        showResult(this.overlay, "Update check", false, errorMessage2(error));
+      }
+      cx.notify();
+    });
+  }
+  progress(message) {
+    const dialog = {
+      kind: "confirm",
+      title: TITLE,
+      width: DIALOG.medium,
+      lines: [message],
+      primary: "",
+      secondary: "[Esc] Close",
+      enabled: () => false,
+      onConfirm: () => {}
+    };
+    this.overlay.open(dialog);
+    return dialog;
+  }
+  confirm(release) {
+    this.overlay.open({
+      kind: "confirm",
+      title: TITLE,
+      width: DIALOG.medium,
+      lines: [`v${VERSION} → ${release.tag}`, "", "Install the GitHub release and reload Git?"],
+      primary: "[Enter] Install",
+      onConfirm: (cx) => this.install(release, cx)
+    });
+  }
+  install(release, cx) {
+    if (this.installing)
+      return;
+    this.installing = true;
+    const dialog = this.progress(`Installing ${release.tag}…`);
+    cx.spawn(async (cx) => {
+      try {
+        const path = `${appHome2()}/mods/git/${BUNDLE_ASSET}`;
+        await installRelease(VERSION, release, { read: () => readTextFile(path), replace: (text, expected) => writeTextFile(path, text, expected) }, download);
+        this.available = null;
+        if (!this.active)
+          return;
+        notify2({ title: `Installed Herdr Git Mods ${release.tag}`, level: "success" });
+        if (this.overlay.current() === dialog)
+          this.overlay.close(cx);
+      } catch (error) {
+        if (!this.active)
+          return;
+        if (this.overlay.current() === dialog)
+          showResult(this.overlay, TITLE, false, errorMessage2(error));
+        else
+          notify2({ title: "Herdr Git Mods update failed", body: errorMessage2(error), level: "error" });
+      } finally {
+        this.installing = false;
+      }
+      if (this.active)
+        cx.notify();
+    });
   }
 }
 
@@ -11525,8 +11532,7 @@ class Session {
     });
     changes.activate(cx);
     this.listenCommands(cx);
-    this.commands.update.background(cx);
-    cx.timer.every(UPDATE_INTERVAL, (cx) => this.commands.update.background(cx));
+    this.commands.update.watch(cx);
     this.refresh("repository", cx);
     cx.timer.every(REFRESH_MS, (cx) => {
       if (this.settings.autoRefresh)

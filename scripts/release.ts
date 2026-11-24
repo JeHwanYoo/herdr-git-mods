@@ -50,7 +50,20 @@ function bumpVersion(tag: string, bump: Bump): string {
 function releaseInfo(repo: string, tag: string): ReleaseInfo | null {
   const result = capture(["gh", "release", "view", tag, "--repo", repo, "--json", "body,isDraft,isPrerelease"]);
   if (result.exitCode !== 0) return null;
-  return JSON.parse(result.stdout.toString()) as ReleaseInfo;
+  const release: unknown = JSON.parse(result.stdout.toString());
+  if (
+    typeof release !== "object" ||
+    release === null ||
+    !("body" in release) ||
+    typeof release.body !== "string" ||
+    !("isDraft" in release) ||
+    typeof release.isDraft !== "boolean" ||
+    !("isPrerelease" in release) ||
+    typeof release.isPrerelease !== "boolean"
+  ) {
+    throw new Error(`GitHub returned unexpected release metadata for ${tag}.`);
+  }
+  return { body: release.body, isDraft: release.isDraft, isPrerelease: release.isPrerelease };
 }
 
 async function publish(repo: string, tag: string, marker: string, draft?: ReleaseInfo): Promise<void> {

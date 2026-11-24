@@ -56,7 +56,7 @@ main.ts → runtime/pane.ts, runtime/context.ts, git/{repository,read-sharing}.t
 ui/theme.ts → herdr only
 ui/widgets.ts → theme.ts
 ui/overlay.ts → theme.ts, widgets.ts
-ui/shell.ts → theme.ts, widgets.ts, overlay.ts; runtime/context.ts, git/repository.ts (types)
+ui/shell.ts → theme.ts, widgets.ts, overlay.ts; runtime/context.ts, git/repository.ts (types), version.ts
 ui/syntax.ts → theme.ts
 ui/code-view.ts → changes/document.ts, syntax.ts, theme.ts, widgets.ts
 ui/changes.ts, ui/changes/* → code-view.ts, explorer/line-history.ts, commands/result.ts, workspaces.ts, foundation; git/{comparison,diff,staging}.ts
@@ -64,12 +64,14 @@ ui/graph.ts, ui/graph/* → code-view.ts, commands/result.ts, workspaces.ts, fou
 ui/explorer.ts, ui/explorer/* → code-view.ts, changes/review.ts, commands/result.ts, workspaces.ts, foundation; git/{files,history,repository}.ts
 ui/workspaces.ts, ui/workspaces/* → commands/result.ts, foundation; runtime/context.ts; git/workspaces.ts
 ui/commands.ts, ui/commands/* → changes.ts, graph.ts, explorer.ts, workspaces.ts (tab APIs), foundation; git/{workflows,rebase,remotes,ref-operations}.ts
-ui/commands/update.ts → runtime/mod-release.ts
-ui/settings.ts → shell.ts, theme.ts, widgets.ts
+ui/commands.ts → ui/commands/update.ts
+ui/commands/update.ts → runtime/mod-release.ts, version.ts
+ui/settings.ts → shell.ts, theme.ts, widgets.ts, version.ts
 git/* → git/repository.ts; git/{diff,workspaces}.ts → git/comparison.ts
 runtime/pane.ts → context.ts, pane-target.ts
 runtime/context.ts → repository-selection.ts
-runtime/pane-target.ts, runtime/repository-selection.ts, git/repository.ts → no imports
+runtime/mod-release.ts → version.ts
+runtime/pane-target.ts, runtime/repository-selection.ts, git/repository.ts, version.ts → no project imports
 ```
 
 "Foundation" is `theme.ts`, `widgets.ts`, `shell.ts` and `overlay.ts`. Only the dependencies shown above are allowed.

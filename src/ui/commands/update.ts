@@ -7,7 +7,8 @@ import { DIALOG } from "../theme.ts";
 import { errorMessage } from "./host.ts";
 import { showResult } from "./result.ts";
 
-export const UPDATE_INTERVAL = 30 * 60 * 1000;
+const UPDATE_INTERVAL = 30 * 60 * 1000;
+const UPDATE_TICK = 60 * 1000;
 const LAST_CHECK = "git-release-check";
 const LAST_NOTICE = "git-release-notice";
 const TITLE = "Update Herdr Git Mods";
@@ -73,8 +74,14 @@ export class ModUpdate {
     return this.pending;
   }
 
-  background(cx: Context): void {
-    if (checking() || !this.active || this.installing) return;
+  watch(cx: Context): void {
+    if (checking()) return;
+    this.background(cx);
+    cx.timer.every(UPDATE_TICK, (cx) => this.background(cx));
+  }
+
+  private background(cx: Context): void {
+    if (!this.active || this.installing) return;
     cx.spawn(async (cx) => {
       const elapsed = Date.now() - Number(localStorage.getItem(LAST_CHECK));
       if (elapsed >= 0 && elapsed < UPDATE_INTERVAL) return;

@@ -1,4 +1,4 @@
-import { BUNDLE_ASSET, bundleHeader, VERSION } from "../src/version.ts";
+import { BUNDLE_ASSET, BUNDLE_LIMIT, bundleHeader, VERSION } from "../src/version.ts";
 import { flags, run } from "./cli.ts";
 
 const USAGE = `Usage:
@@ -27,6 +27,7 @@ async function bundle(): Promise<string> {
   if (!result.success) throw new Error(result.logs.map((log) => log.message).join("\n"));
   const [output] = result.outputs;
   if (!output) throw new Error("The build produced no output.");
+  if (output.size > BUNDLE_LIMIT) throw new Error(`${OUTPUT} exceeds Herdr's 1 MiB text read limit.`);
   return output.text();
 }
 
