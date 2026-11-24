@@ -2,11 +2,11 @@ import { afterEach, expect, test } from "bun:test";
 import { mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readRebasePlan, runRebase } from "../src/git/rebase.ts";
-import { readBranches } from "../src/git/ref-operations.ts";
-import { readRemotes } from "../src/git/remotes.ts";
-import type { GitResult } from "../src/git/repository.ts";
-import { ReviewedOperation } from "../src/git/workflows.ts";
+import { readRebasePlan, runRebase } from "../../src/git/rebase.ts";
+import { readBranches } from "../../src/git/ref-operations.ts";
+import { readRemotes } from "../../src/git/remotes.ts";
+import type { GitResult } from "../../src/git/repository.ts";
+import { ReviewedOperation } from "../../src/git/workflows.ts";
 
 const ENV = {
   ...process.env,

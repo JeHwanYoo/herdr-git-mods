@@ -2,10 +2,10 @@ import { afterEach, expect, test } from "bun:test";
 import { mkdir, mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readChanges } from "../src/git/comparison.ts";
-import { readBlameRange, readTargetDiff } from "../src/git/diff.ts";
-import { type GitResult, type RunGit, readRepository } from "../src/git/repository.ts";
-import { runStaging } from "../src/git/staging.ts";
+import { readChanges } from "../../src/git/comparison.ts";
+import { readBlameRange, readTargetDiff } from "../../src/git/diff.ts";
+import { type GitResult, type RunGit, readRepository } from "../../src/git/repository.ts";
+import { runStaging } from "../../src/git/staging.ts";
 
 const ENV = {
   ...process.env,

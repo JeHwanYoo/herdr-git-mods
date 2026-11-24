@@ -1,5 +1,7 @@
 # Testing
 
+Group tests by the code they exercise under `tests/git/`, `tests/runtime/`, or `tests/scripts/`. Keep executable benchmarks in `scripts/`.
+
 A test earns its place when it can catch a bug a user would hit. Test behavior through a module's public interface, with real inputs, and assert on results a user or caller can observe.
 
 ## How this project tests

@@ -2,9 +2,9 @@ import { afterEach, expect, test } from "bun:test";
 import { access, mkdir, mkdtemp, readFile, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { readHistoryPage } from "../src/git/history.ts";
-import { prepareHistory } from "../src/git/history-maintenance.ts";
-import type { GitResult } from "../src/git/repository.ts";
+import { readHistoryPage } from "../../src/git/history.ts";
+import { prepareHistory } from "../../src/git/history-maintenance.ts";
+import type { GitResult } from "../../src/git/repository.ts";
 
 const ENV = {
   ...process.env,

@@ -2,8 +2,8 @@ import { afterEach, expect, test } from "bun:test";
 import { mkdtemp, realpath, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readLineChanges, readLineHistory, searchContents } from "../src/git/files.ts";
-import type { GitResult } from "../src/git/repository.ts";
+import { readLineChanges, readLineHistory, searchContents } from "../../src/git/files.ts";
+import type { GitResult } from "../../src/git/repository.ts";
 
 const ENV = {
   ...process.env,

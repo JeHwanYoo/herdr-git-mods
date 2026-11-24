@@ -2,8 +2,8 @@ import { afterEach, expect, test } from "bun:test";
 import { mkdir, mkdtemp, realpath, rename, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { readDiff } from "../src/git/diff.ts";
-import { readFiles } from "../src/git/files.ts";
+import { readDiff } from "../../src/git/diff.ts";
+import { readFiles } from "../../src/git/files.ts";
 import {
   filteredCommitIndices,
   readCommitChanges,
@@ -11,9 +11,9 @@ import {
   readRefs,
   readRefsFingerprint,
   relativeTime,
-} from "../src/git/history.ts";
-import { type FileChange, type GitResult, mapGit, type Repository, readRepository } from "../src/git/repository.ts";
-import { ReviewedOperation } from "../src/git/workflows.ts";
+} from "../../src/git/history.ts";
+import { type FileChange, type GitResult, mapGit, type Repository, readRepository } from "../../src/git/repository.ts";
+import { ReviewedOperation } from "../../src/git/workflows.ts";
 
 const ENV = {
   ...process.env,
