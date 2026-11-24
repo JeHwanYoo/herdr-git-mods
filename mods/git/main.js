@@ -975,7 +975,10 @@ var SVG_PATHS = {
   local: "M 2 3 L 14 3 L 14 11 L 2 11 Z M 8 11 L 8 14 M 5 14 L 11 14",
   worktree: "M 2 5 L 6 5 L 8 7 L 14 7 L 14 13 L 2 13 Z M 2 5 L 2 3 L 8 3 L 10 5 L 14 5 L 14 7",
   repository: "M 4 2 L 13 2 L 13 13 L 4 13 C 1 13 1 10 4 10 L 13 10 M 4 2 C 2 2 2 3 2 5 L 2 11 M 6 4 L 10 4",
-  file: "M 3 2 L 9 2 L 13 6 L 13 14 L 3 14 Z M 9 2 L 9 6 L 13 6 M 5 9 L 11 9 M 5 11 L 10 11",
+  file: "M 3 2 L 9 2 L 13 6 L 13 14 L 3 14 Z M 9 2 L 9 6 L 13 6 M 6 10 L 10 10",
+  fetch: "M 8 2 L 8 10 M 5 7 L 8 10 L 11 7 M 2 10 L 2 14 L 14 14 L 14 10",
+  cherryPick: "M 5 9 C 5 5 8 3 12 2 M 11 8 L 12 2 M 7 11 C 7 14 2 14 2 11 C 2 8 7 8 7 11 Z M 14 10 C 14 13 9 13 9 10 C 9 7 14 7 14 10 Z",
+  revert: "M 6 3 L 2 7 L 6 11 M 2 7 L 10 7 C 14 7 14 10 14 13",
   checkout: "M 3 14 L 3 8 C 3 5 5 4 8 4 L 14 4 M 10 1 L 14 4 L 10 7",
   rebase: "M 4 14 L 4 2 M 1 5 L 4 2 L 7 5 M 12 14 L 12 11 C 12 8 10 8 7 8 L 4 8",
   reset: "M 3 5 C 7 0 14 3 14 8 C 14 14 7 16 3 12 M 2 2 L 2 6 L 6 6",
@@ -5749,7 +5752,7 @@ var TAB_LABELS = {
   settings: { label: "Settings", shortcut: "," }
 };
 var QUICK_ACTIONS = [
-  { id: "fetch", label: "Fetch", shortcut: "f", symbol: "↧" },
+  { id: "fetch", label: "Fetch", shortcut: "f", icon: "fetch" },
   { id: "pull", label: "Pull", shortcut: "l", symbol: "↓" },
   { id: "commit", label: "Commit", shortcut: "c", symbol: "●" },
   { id: "push", label: "Push", shortcut: "u", symbol: "↑" },
@@ -8747,11 +8750,11 @@ function workingChanges2(files) {
 function changeLine(status, path, index, t) {
   return {
     change: index,
+    path,
     spans: [
       { text: status.charAt(0) || status, color: statusColor(t, status), bold: true },
       { text: " " },
-      { text: " ", icon: "file", color: t.hint },
-      { text: path }
+      { text: " ", icon: "file", color: t.hint }
     ]
   };
 }
@@ -9150,7 +9153,7 @@ class Inspect {
     }).on_scroll_wheel((event, cx) => this.wheelDetails(event, look, cx)).child(body));
   }
   detailRow(look, line, index, onFocus) {
-    const row = h_flex16().id(`git-commit-detail-${index}`).flex_none().h(look.row).min_w(0).overflow_hidden().whitespace_nowrap().children(spanElements(look, line.spans));
+    const row = h_flex16().id(`git-commit-detail-${index}`).flex_none().h(look.row).min_w(0).overflow_hidden().whitespace_nowrap().children(spanElements(look, line.spans)).when(line.path !== undefined, (el) => el.child(div18().min_w(0).truncate().child(line.path ?? "")));
     const change = line.change;
     if (change === undefined)
       return row;
@@ -9434,7 +9437,7 @@ function badgeStyle(kind, t) {
 }
 function badgeSpans(references, width, t) {
   const spans = [];
-  let remaining = width;
+  let remaining = width - 1;
   for (const reference of references) {
     const separator = spans.length ? 1 : 0;
     const available = remaining - separator;
@@ -9454,7 +9457,7 @@ function badgeSpans(references, width, t) {
       spans.push({ text: ` ${symbol} ${name} `, bg });
     remaining -= badgeWidth;
   }
-  if (spans.length && remaining > 0)
+  if (spans.length)
     spans.push({ text: " " });
   return spans;
 }
@@ -9505,8 +9508,8 @@ function commitDetail(look, commit, text) {
 var GRAPH_ACTIONS = [
   { id: "checkout", label: "Checkout", shortcut: "x", icon: "checkout" },
   { id: "rebase", label: "Rebase", shortcut: "r", icon: "rebase" },
-  { id: "cherry-pick", label: "Cherry-pick", shortcut: "y", symbol: "⎇" },
-  { id: "revert", label: "Revert", shortcut: "v", symbol: "↩" },
+  { id: "cherry-pick", label: "Cherry-pick", shortcut: "y", icon: "cherryPick" },
+  { id: "revert", label: "Revert", shortcut: "v", icon: "revert" },
   { id: "reset", label: "Reset", shortcut: "t", icon: "reset" },
   { id: "copy-sha", label: "Copy SHA", shortcut: "h", icon: "copy" }
 ];
@@ -11299,26 +11302,30 @@ class WorkspacesBox {
       return "Workspaces";
     return h_flex23().child(spinner(look)).child(this.loaded ? " Refreshing Workspaces" : " Loading Workspaces");
   }
-  nameLine(look, row, focusedRow, index) {
+  nameSpans(row, look, spans, reserved) {
     const { t } = look;
-    const switching = this.switching === rowKey2(row);
-    const icon = row.kind.type === "worktree" ? "worktree" : "repository";
-    const marker = switching ? [] : this.active(row) ? [{ text: GLYPH.marker, color: t.accent }] : [{ text: " ", icon, color: t.hint }];
     const name = pathLabel(row.path);
-    const spans = [...marker];
     if (row.kind.type === "worktree")
       spans.push({ text: `  ${worktreeLabel(row.path, row.kind.project)}` });
     else
       spans.push({ text: name });
     if (row.kind.type === "project") {
       const count = ` · ${row.worktrees} ${row.worktrees === 1 ? "worktree" : "worktrees"}`;
-      if (this.width >= spansWidth(spans) + displayWidth(count))
+      if (this.width >= spansWidth(spans) + displayWidth(count) + reserved)
         spans.push({ text: count, color: t.hint });
     }
+    return spans;
+  }
+  nameLine(look, row, focusedRow, index) {
+    const { t } = look;
+    const switching = this.switching === rowKey2(row);
+    const icon = row.kind.type === "worktree" ? "worktree" : "repository";
+    const marker = switching ? [] : this.active(row) ? [{ text: padToWidth(GLYPH.marker, ICON_CELLS + 1), color: t.accent }] : [{ text: " ", icon, color: t.hint }];
+    const spans = this.nameSpans(row, look, marker, switching ? ICON_CELLS + 1 : 0);
     const content = line2(look, spans).flex_1();
     const result = h_flex23().flex_none().h(look.row).min_w(0);
     if (switching)
-      result.child(spinner(look)).child(div25().flex_none().child(" "));
+      result.child(h_flex23().flex_none().w((ICON_CELLS + 1) * look.cell).child(spinner(look)));
     result.child(content);
     const actions = row.kind.type === "project" && (focusedRow || this.hovered === index) && this.width > 3;
     if (actions)

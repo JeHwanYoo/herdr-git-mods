@@ -24,6 +24,7 @@ export interface WorkingChange {
 interface DetailLine {
   spans: CellSpan[];
   change?: number;
+  path?: string;
 }
 
 interface PreviewTarget {
@@ -53,11 +54,11 @@ export function workingChanges(files: readonly FileChange[]): WorkingChange[] {
 function changeLine(status: string, path: string, index: number, t: Palette): DetailLine {
   return {
     change: index,
+    path,
     spans: [
       { text: status.charAt(0) || status, color: statusColor(t, status), bold: true },
       { text: " " },
       { text: " ", icon: "file", color: t.hint },
-      { text: path },
     ],
   };
 }
@@ -463,7 +464,15 @@ export class Inspect {
       .min_w(0)
       .overflow_hidden()
       .whitespace_nowrap()
-      .children(spanElements(look, line.spans));
+      .children(spanElements(look, line.spans))
+      .when(line.path !== undefined, (el) =>
+        el.child(
+          div()
+            .min_w(0)
+            .truncate()
+            .child(line.path ?? ""),
+        ),
+      );
     const change = line.change;
     if (change === undefined) return row;
     return row

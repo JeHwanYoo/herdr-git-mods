@@ -13,6 +13,7 @@ import type { Repository } from "../git/repository.ts";
 import { type GitAt, inspectProject, inspectWorktree, projectRoot, type WorktreeStatus } from "../git/workspaces.ts";
 import type { RepositoryLocation } from "../runtime/context.ts";
 import { showResult } from "./commands/result.ts";
+import { ICON_CELLS } from "./icons.ts";
 import type { Services } from "./shell.ts";
 import { DIALOG, GLYPH, type Look, rows as rowsPx } from "./theme.ts";
 import {
@@ -20,6 +21,7 @@ import {
   type CellSpan,
   displayWidth,
   isChord,
+  padToWidth,
   spanElements,
   spansWidth,
   spinner,
@@ -469,6 +471,18 @@ export class WorkspacesBox {
       .child(this.loaded ? " Refreshing Workspaces" : " Loading Workspaces");
   }
 
+  private nameSpans(row: RepositoryRow, look: Look, spans: CellSpan[], reserved: number): CellSpan[] {
+    const { t } = look;
+    const name = pathLabel(row.path);
+    if (row.kind.type === "worktree") spans.push({ text: `  ${worktreeLabel(row.path, row.kind.project)}` });
+    else spans.push({ text: name });
+    if (row.kind.type === "project") {
+      const count = ` · ${row.worktrees} ${row.worktrees === 1 ? "worktree" : "worktrees"}`;
+      if (this.width >= spansWidth(spans) + displayWidth(count) + reserved) spans.push({ text: count, color: t.hint });
+    }
+    return spans;
+  }
+
   private nameLine(look: Look, row: RepositoryRow, focusedRow: boolean, index: number): Element {
     const { t } = look;
     const switching = this.switching === rowKey(row);
@@ -476,19 +490,18 @@ export class WorkspacesBox {
     const marker: CellSpan[] = switching
       ? []
       : this.active(row)
-        ? [{ text: GLYPH.marker, color: t.accent }]
+        ? [{ text: padToWidth(GLYPH.marker, ICON_CELLS + 1), color: t.accent }]
         : [{ text: " ", icon, color: t.hint }];
-    const name = pathLabel(row.path);
-    const spans: CellSpan[] = [...marker];
-    if (row.kind.type === "worktree") spans.push({ text: `  ${worktreeLabel(row.path, row.kind.project)}` });
-    else spans.push({ text: name });
-    if (row.kind.type === "project") {
-      const count = ` · ${row.worktrees} ${row.worktrees === 1 ? "worktree" : "worktrees"}`;
-      if (this.width >= spansWidth(spans) + displayWidth(count)) spans.push({ text: count, color: t.hint });
-    }
+    const spans = this.nameSpans(row, look, marker, switching ? ICON_CELLS + 1 : 0);
     const content = line(look, spans).flex_1();
     const result = h_flex().flex_none().h(look.row).min_w(0);
-    if (switching) result.child(spinner(look)).child(div().flex_none().child(" "));
+    if (switching)
+      result.child(
+        h_flex()
+          .flex_none()
+          .w((ICON_CELLS + 1) * look.cell)
+          .child(spinner(look)),
+      );
     result.child(content);
     const actions = row.kind.type === "project" && (focusedRow || this.hovered === index) && this.width > 3;
     if (actions)

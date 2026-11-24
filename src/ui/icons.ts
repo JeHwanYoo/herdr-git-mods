@@ -11,7 +11,11 @@ const SVG_PATHS = {
   local: "M 2 3 L 14 3 L 14 11 L 2 11 Z M 8 11 L 8 14 M 5 14 L 11 14",
   worktree: "M 2 5 L 6 5 L 8 7 L 14 7 L 14 13 L 2 13 Z M 2 5 L 2 3 L 8 3 L 10 5 L 14 5 L 14 7",
   repository: "M 4 2 L 13 2 L 13 13 L 4 13 C 1 13 1 10 4 10 L 13 10 M 4 2 C 2 2 2 3 2 5 L 2 11 M 6 4 L 10 4",
-  file: "M 3 2 L 9 2 L 13 6 L 13 14 L 3 14 Z M 9 2 L 9 6 L 13 6 M 5 9 L 11 9 M 5 11 L 10 11",
+  file: "M 3 2 L 9 2 L 13 6 L 13 14 L 3 14 Z M 9 2 L 9 6 L 13 6 M 6 10 L 10 10",
+  fetch: "M 8 2 L 8 10 M 5 7 L 8 10 L 11 7 M 2 10 L 2 14 L 14 14 L 14 10",
+  cherryPick:
+    "M 5 9 C 5 5 8 3 12 2 M 11 8 L 12 2 M 7 11 C 7 14 2 14 2 11 C 2 8 7 8 7 11 Z M 14 10 C 14 13 9 13 9 10 C 9 7 14 7 14 10 Z",
+  revert: "M 6 3 L 2 7 L 6 11 M 2 7 L 10 7 C 14 7 14 10 14 13",
   checkout: "M 3 14 L 3 8 C 3 5 5 4 8 4 L 14 4 M 10 1 L 14 4 L 10 7",
   rebase: "M 4 14 L 4 2 M 1 5 L 4 2 L 7 5 M 12 14 L 12 11 C 12 8 10 8 7 8 L 4 8",
   reset: "M 3 5 C 7 0 14 3 14 8 C 14 14 7 16 3 12 M 2 2 L 2 6 L 6 6",

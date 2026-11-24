@@ -127,7 +127,7 @@ const TAB_LABELS: Record<TabId, { label: string; shortcut: string }> = {
 };
 
 const QUICK_ACTIONS: readonly (Pick<ActionCell, "label" | "shortcut" | "icon" | "symbol"> & { id: QuickAction })[] = [
-  { id: "fetch", label: "Fetch", shortcut: "f", symbol: "↧" },
+  { id: "fetch", label: "Fetch", shortcut: "f", icon: "fetch" },
   { id: "pull", label: "Pull", shortcut: "l", symbol: "↓" },
   { id: "commit", label: "Commit", shortcut: "c", symbol: "●" },
   { id: "push", label: "Push", shortcut: "u", symbol: "↑" },
