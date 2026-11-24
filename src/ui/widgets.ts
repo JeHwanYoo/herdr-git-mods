@@ -1,5 +1,6 @@
 import { Button, h_flex, Input, type InputState, v_flex } from "gpui-base";
 import { type Context, div, type Element, type KeyEvent, type ScrollWheelEvent } from "gpui-kit";
+import { ICON_CELLS, type IconName, iconCell } from "./icons.ts";
 import { type Color, cols, GLYPH, type Look, rows, SPINNER } from "./theme.ts";
 
 const WIDE_RANGES: readonly [number, number][] = [
@@ -43,6 +44,31 @@ export function truncateToWidth(text: string, width: number): string {
     result += character;
   }
   return `${result}…`;
+}
+
+export interface CellSpan {
+  text: string;
+  icon?: IconName;
+  color?: Color;
+  bg?: Color;
+  bold?: boolean;
+}
+
+export function spansWidth(spans: readonly CellSpan[]): number {
+  return spans.reduce((total, span) => total + displayWidth(span.text) + (span.icon ? ICON_CELLS : 0), 0);
+}
+
+export function spanElements(look: Look, spans: readonly CellSpan[]): Element[] {
+  return spans.map(({ text, icon, color, bg, bold }) => {
+    const span = h_flex()
+      .flex_none()
+      .items_center()
+      .when(!!color, (el) => el.text_color(color ?? look.t.text))
+      .when(!!bg, (el) => el.bg(bg ?? look.t.panel))
+      .when(!!bold, (el) => el.font_weight(700));
+    if (icon) span.child(iconCell(look, icon, color));
+    return span.child(text);
+  });
 }
 
 export function padToWidth(text: string, width: number): string {
@@ -116,7 +142,8 @@ export interface ActionCell {
   id: string;
   label: string;
   shortcut: string;
-  icon: string;
+  icon?: IconName;
+  symbol?: string;
   enabled: boolean;
   selected?: boolean;
   running?: string | null;
@@ -136,12 +163,12 @@ function actionContent(look: Look, cell: ActionCell, hints: boolean, color: Colo
         .child(cell.shortcut.toUpperCase()),
       div().text_color(color).child(`${gap}${cell.label}`),
     ];
-  return [
-    div()
-      .text_color(color)
-      .truncate()
-      .child(cell.icon ? `${cell.icon}${gap}${cell.label}` : cell.label),
-  ];
+  const symbol = cell.symbol ? `${cell.symbol}${gap}` : cell.icon ? " " : "";
+  const label = div()
+    .text_color(color)
+    .truncate()
+    .child(symbol + cell.label);
+  return cell.icon ? [iconCell(look, cell.icon, color), label] : [label];
 }
 
 function actionButton(look: Look, cell: ActionCell, hints: boolean): Element {

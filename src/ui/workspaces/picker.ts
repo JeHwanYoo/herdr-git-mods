@@ -1,7 +1,8 @@
 import { h_flex, v_flex } from "gpui-base";
 import { type Context, div, type Element, type KeyEvent } from "gpui-kit";
+import { iconCell } from "../icons.ts";
 import type { Overlay } from "../overlay.ts";
-import { DIALOG, GLYPH, type Look } from "../theme.ts";
+import { DIALOG, type Look } from "../theme.ts";
 import { dialogFooter, footerHint, isChord, ListViewport } from "../widgets.ts";
 import { pathLabel, type RepositoryRow } from "./rows.ts";
 
@@ -12,13 +13,6 @@ export interface WorkspacePickerOptions {
   rows: () => RepositoryRow[];
   selected: number;
   choose: (row: RepositoryRow, cx: Context) => void;
-}
-
-function label(row: RepositoryRow): string {
-  const name = pathLabel(row.path);
-  if (row.kind.type === "current") return `Current · ${name}`;
-  if (row.kind.type === "project") return `${GLYPH.repository} ${name}`;
-  return `  ${GLYPH.worktree} ${name}`;
 }
 
 function rowElement(look: Look, row: RepositoryRow | undefined, index: number): Element {
@@ -35,11 +29,14 @@ function rowElement(look: Look, row: RepositoryRow | undefined, index: number): 
       )
       .child(div().text_color(t.hint).child("] "));
   else line.child(div().child("    "));
-  return line.child(
-    div()
-      .truncate()
-      .child(row ? label(row) : ""),
-  );
+  if (!row) return line;
+  const name = pathLabel(row.path);
+  if (row.kind.type === "current") return line.child(div().truncate().child(`Current · ${name}`));
+  if (row.kind.type === "worktree") line.child("  ");
+  return line
+    .items_center()
+    .child(iconCell(look, row.kind.type === "project" ? "repository" : "worktree"))
+    .child(div().truncate().child(` ${name}`));
 }
 
 export function openWorkspacePicker(overlay: Overlay, options: WorkspacePickerOptions): void {
