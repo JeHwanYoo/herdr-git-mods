@@ -1,6 +1,6 @@
 # Testing
 
-Group tests by the code they exercise under `tests/git/`, `tests/runtime/`, or `tests/scripts/`. Keep executable benchmarks in `scripts/`.
+Put Git and Herdr runtime tests in `tests/git/` and `tests/runtime/`. Keep the performance runner, fixtures, and scenarios together in `tests/performances/`.
 
 A test earns its place when it can catch a bug a user would hit. Test behavior through a module's public interface, with real inputs, and assert on results a user or caller can observe.
 
@@ -74,7 +74,7 @@ These tests stay green while the same code fails in production. Use the real dep
 
 ## Linux performance gate
 
-Run `bun run performance` locally or use the Linux performance workflow. It maintains a persistent bare Linux cache, then clones the pinned v6.12 commit into an automatically removed temporary directory with depth 1 and a complete working tree. Cache/download/checkout setup is excluded from scenario timings. This bounds CI cost; it does not model full-history traversal, every ref, or GUI rendering in Herdr.
+Run `bun run performance` to execute the component suite in Testcontainers, locally or in GitHub Actions. Run `bun run performance --help` to list scenarios, or pass a scenario name such as `bun run performance path-search`. Scenario implementations live in `tests/performances/scenarios/`. It maintains a persistent bare Linux cache, then clones the pinned v6.12 commit into an automatically removed temporary directory with depth 1 and a complete working tree. Cache/download/checkout setup is excluded from scenario timings. This bounds CI cost; it does not model full-history traversal, every ref, or GUI rendering in Herdr.
 
 The gate calls production modules with real Git and validates their results. Each scenario records its first call separately and 20 subsequent calls. The nearest-rank p95 must meet the budget below; every call, including the first, must remain below twice that budget. The first call is not a cold-cache measurement: checkout and earlier scenarios affect filesystem caches. Thresholds are product targets, not guarantees for every machine: ordinary actions should complete within half a second, previews within 200 ms, and repository-wide search within one second.
 
@@ -93,20 +93,19 @@ Any exceeded budget or incorrect result fails the job. `performance.json` record
 
 Linux history is deliberately excluded: 120 local commits sharing the Linux tree exercise history pagination without downloading ancestry. Blame covers only the shallow snapshot; neither scenario establishes deep-history performance. Path ranking has a separate 100 ms p95 budget because it runs during interactive search (the UI also debounces input by 120 ms). Staging cleanup runs outside the measured interval. These are component budgets: host IPC, repository facts, workspaces, QuickJS execution, layout, and drawing require separate Herdr validation before claiming end-to-end responsiveness.
 
-Changes follows the current refresh path: status is read once outside its timing, then `readChanges` receives that snapshot and checks tracked plus untracked changes. This measures the Changes read after status, not the whole refresh or concurrent Changes/Workspaces request sharing. The shallow/synthetic history scenario exercises the current history module but does not validate full-history commit-graph preparation or redundant-ref reduction; use `performance:full` for that.
+Changes follows the current refresh path: status is read once outside its timing, then `readChanges` receives that snapshot and checks tracked plus untracked changes. This measures the Changes read after status, not the whole refresh or concurrent Changes/Workspaces request sharing. The shallow/synthetic history scenario exercises the current history module but does not validate full-history commit-graph preparation or redundant-ref reduction; use the `full-history` scenario for that.
 
 ### Persistent fixture cache
 
 - Missing cache: clone v6.12, fetch upstream's current HEAD, verify the pinned fixture, then publish the completed cache. A failed download or validation does not publish a partial repository.
 - Existing cache: verify its upstream and pinned revision, then fetch upstream HEAD and the fixture tag before every run. Fetch failures fail the run; an old cache is not silently accepted as current.
 - The cache tracks upstream HEAD in `refs/heads/upstream`, but the benchmark stays at v6.12 commit `adc218676eef25575469234709c2d87185ca223a`. Updating upstream must not change the benchmark dataset or budgets.
-- Default cache directory: `$XDG_CACHE_HOME/herdr-git-mods/performance`, or `~/.cache/herdr-git-mods/performance` when XDG is unset. Set `PERF_CACHE_DIR` to override it for either command.
+- Default cache directory: `$XDG_CACHE_HOME/herdr-git-mods/performance`, or `~/.cache/herdr-git-mods/performance` when XDG is unset. Set `PERF_CACHE_DIR` to override it.
 - Each run clones over Git's local file transport into its own temporary working tree, with no alternates or shared object files. Fixture edits and synthetic commits never modify the cache. Deleting the cache does not invalidate an already-created test checkout.
 - Cache contents survive benchmark/container cleanup. To force a fresh download, remove only `linux-v6.12.git` inside the cache directory when no cache setup is running. Interrupted first downloads may leave `.linux-download-*` directories; they are never used as a valid cache.
 
 ```sh
 PERF_CACHE_DIR=/path/to/performance-cache bun run performance
-PERF_CACHE_DIR=/path/to/performance-cache bun run performance:container
 ```
 
 The first download also fetches current upstream HEAD, so it is still network-bound. Later runs fetch updates and perform a local checkout, not another full GitHub clone. Checkout still reads/writes the complete Linux working tree; caching does not make setup instantaneous or establish a cold filesystem-cache measurement.
@@ -115,11 +114,11 @@ Cache verification uses real Git regression tests for upstream advancement, pinn
 
 ### Constrained Linux runner
 
-`bun run performance:container` shares the same persistent host cache directory at `/performance-cache`. Git clone/fetch run inside the container, using its Git/network environment; cache writes use the host UID/GID to remain writable by ordinary local runs. Testcontainers builds the image, copies the current source, and runs the gate with 2 CPU cores and 2 GiB of memory. The mutable benchmark checkout lives on the container filesystem, separate from the cache bind mount. It verifies cgroup v2 limits before measuring and stops the container in `finally`; Testcontainers' resource reaper handles abandoned resources. Docker must be running and able to bind-mount the host cache path (Docker Desktop file sharing applies). The launcher uses `DOCKER_HOST` when provided or resolves the active Docker context.
+The component suite mounts the persistent host cache directory at `/performance-cache`. Git clone/fetch run inside the container, using its Git/network environment; cache writes use the host UID/GID to remain writable by ordinary local runs. Testcontainers builds the image, copies the current source, and runs the gate with 2 CPU cores and 2 GiB of memory. The mutable benchmark checkout lives on the container filesystem, separate from the cache bind mount. It verifies cgroup v2 limits before measuring and stops the container in `finally`; Testcontainers' resource reaper handles abandoned resources. Docker must be running and able to bind-mount the host cache path (Docker Desktop file sharing applies). The launcher uses `DOCKER_HOST` when provided or resolves the active Docker context.
 
 CI restores and saves the host cache with GitHub Actions cache, using the fixture version and runner OS as the restore prefix and a per-run key to save fetched updates. It runs the same container command and uploads `performance.json`. CPU quotas bound available CPU time rather than emulate a particular processor generation; local ARM and CI x86 results are not interchangeable. This is a backend and pure UI-data performance gate, not a GPU, frame-time, or native Herdr integration benchmark.
 
-All three performance commands announce their scope and report path. Excluded setup/cleanup phases print start/end messages and elapsed time every five seconds while waiting. Each measured scenario announces its p95 and maximum budgets, then reports sample 1, every fifth sample, and sample 21. Sample progress is printed after the elapsed time is captured; no progress timer runs inside measured scenarios, including the full-history baseline and preparation-plus-first-page measurement.
+The performance runner announces its scope and report path. Excluded setup/cleanup phases print start/end messages and elapsed time every five seconds while waiting. Each measured scenario announces its p95 and maximum budgets, then reports sample 1, every fifth sample, and sample 21. Sample progress is printed after the elapsed time is captured; no progress timer runs inside measured scenarios, including the full-history baseline and preparation-plus-first-page measurement.
 
 The container runner announces Docker build/start before waiting and streams the benchmark's stdout/stderr live through `docker exec`, rather than buffering until completion. Docker context/host selection, enforced quotas, report copying, exit-code propagation and Testcontainers cleanup remain in the launcher. Image build, clone and checkout time are not scenario latency budgets.
 
@@ -129,7 +128,7 @@ Local verification (2026-11-16, Linux arm64 container, 2 CPU / 2 GiB): all nine 
 
 ### Full-history Linux gate
 
-Run `bun run performance:full /path/to/full/linux` in addition to the bounded CI fixture. The source must be a local, non-shallow Linux clone with more than 500,000 reachable commits and 70,000 files. The gate creates a disposable complete checkout using shared read-only source objects; edits and commit-graph writes belong to the disposable clone, not the source. Keep the source available and do not prune its objects while the gate runs.
+Run `bun run performance full-history /path/to/full/linux` for the full-history scenario. Testcontainers mounts the source read-only. Use a self-contained, non-shallow Linux clone with more than 500,000 reachable commits and 70,000 files. The gate creates a disposable complete checkout using shared read-only source objects; edits and commit-graph writes belong to the disposable clone, not the source. Keep the source available and do not prune its objects while the gate runs.
 
 The report (`performance-full.json`, or `PERF_REPORT`) records the revision, commit/ref/file counts, environment, setup, an unprepared first-page traversal, one-time graph preparation, and preparation plus the first usable page. Clone/setup is excluded. The unprepared traversal explicitly disables commit-graph reads, even when the source already has an index. These are not cold filesystem-cache measurements.
 

@@ -3,7 +3,7 @@ import { access, mkdir, mkdtemp, rename, rm } from "node:fs/promises";
 import { homedir } from "node:os";
 import { join, resolve } from "node:path";
 import { pathToFileURL } from "node:url";
-import { phase } from "./performance-progress.ts";
+import { phase } from "./progress.ts";
 
 export const LINUX_FIXTURE = {
   url: "https://github.com/torvalds/linux.git",
