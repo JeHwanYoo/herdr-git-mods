@@ -5,9 +5,8 @@ import { type ChangedPath, type Commit, readCommitChanges, statusLetter } from "
 import type { FileChange, RunGit } from "../../git/repository.ts";
 import { SplitDiff } from "../code-view.ts";
 import type { Services } from "../shell.ts";
-import { type Color, GLYPH, type Look, type Palette, statusColor } from "../theme.ts";
-import { box, countedTitle, spinner, truncateToWidth } from "../widgets.ts";
-import { spanElements } from "./rows.ts";
+import { type Look, type Palette, statusColor } from "../theme.ts";
+import { box, type CellSpan, countedTitle, spanElements, spinner, truncateToWidth } from "../widgets.ts";
 
 const DETAILS_CACHE_CAP = 64;
 const PREVIEW_CACHE_CAP = 8;
@@ -23,7 +22,7 @@ export interface WorkingChange {
 }
 
 interface DetailLine {
-  spans: { text: string; color?: Color; bold?: boolean }[];
+  spans: CellSpan[];
   change?: number;
 }
 
@@ -56,7 +55,8 @@ function changeLine(status: string, path: string, index: number, t: Palette): De
     change: index,
     spans: [
       { text: status.charAt(0) || status, color: statusColor(t, status), bold: true },
-      { text: ` ${GLYPH.file} `, color: t.hint },
+      { text: " " },
+      { text: " ", icon: "file", color: t.hint },
       { text: path },
     ],
   };
@@ -463,7 +463,7 @@ export class Inspect {
       .min_w(0)
       .overflow_hidden()
       .whitespace_nowrap()
-      .children(spanElements(line.spans));
+      .children(spanElements(look, line.spans));
     const change = line.change;
     if (change === undefined) return row;
     return row

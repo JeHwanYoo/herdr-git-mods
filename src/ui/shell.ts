@@ -4,6 +4,7 @@ import { div } from "gpui-kit";
 import type { Repository, RunGit } from "../git/repository.ts";
 import type { RepositoryContext, RepositoryLocation } from "../runtime/context.ts";
 import { VERSION } from "../version.ts";
+import { iconCell } from "./icons.ts";
 import type { Overlay } from "./overlay.ts";
 import { GLYPH, type Look } from "./theme.ts";
 import { type ActionCell, actionBar, displayWidth, spinner, tabLabel, truncateToWidth } from "./widgets.ts";
@@ -125,13 +126,13 @@ const TAB_LABELS: Record<TabId, { label: string; shortcut: string }> = {
   settings: { label: "Settings", shortcut: "," },
 };
 
-const QUICK_ACTIONS: readonly { id: QuickAction; label: string; shortcut: string; icon: string }[] = [
-  { id: "fetch", label: "Fetch", shortcut: "f", icon: "↧" },
-  { id: "pull", label: "Pull", shortcut: "l", icon: "↓" },
-  { id: "commit", label: "Commit", shortcut: "c", icon: "●" },
-  { id: "push", label: "Push", shortcut: "u", icon: "↑" },
-  { id: "branch", label: "Branch", shortcut: "b", icon: GLYPH.branch },
-  { id: "stash", label: "Stash", shortcut: "s", icon: "≡" },
+const QUICK_ACTIONS: readonly (Pick<ActionCell, "label" | "shortcut" | "icon" | "symbol"> & { id: QuickAction })[] = [
+  { id: "fetch", label: "Fetch", shortcut: "f", symbol: "↧" },
+  { id: "pull", label: "Pull", shortcut: "l", symbol: "↓" },
+  { id: "commit", label: "Commit", shortcut: "c", symbol: "●" },
+  { id: "push", label: "Push", shortcut: "u", symbol: "↑" },
+  { id: "branch", label: "Branch", shortcut: "b", icon: "branch" },
+  { id: "stash", label: "Stash", shortcut: "s", symbol: "≡" },
 ];
 
 const SHORTCUT_CODES: Record<string, AppShortcut> = {
@@ -191,8 +192,7 @@ function appShortcut(event: KeyEvent, hints: boolean): AppShortcut | null {
 }
 
 function identityText(facts: RepositoryFacts): string {
-  const icon = facts.github ? GLYPH.github : GLYPH.local;
-  return facts.identity ? `${icon} ${facts.identity.name}(${facts.identity.email})` : `${icon} Local unavailable`;
+  return facts.identity ? `${facts.identity.name}(${facts.identity.email})` : "Local unavailable";
 }
 
 export class Shell {
@@ -288,10 +288,8 @@ export class Shell {
       QUICK_ACTIONS.map((action) => {
         const state = commands.quickActionState(action.id);
         return {
+          ...action,
           id: `git-quick-${action.id}`,
-          label: action.label,
-          shortcut: action.shortcut,
-          icon: action.icon,
           enabled: state.enabled,
           running: state.running,
           onClick: (cx: Context) => commands.quickAction(action.id, cx),
@@ -380,6 +378,9 @@ export class Shell {
       .child(" ")
       .children(this.branchLine(look, line))
       .child(div().text_color(t.text).child(`${separator}${line.path}${separator}`))
+      .when(line.status.blame == null, (el) =>
+        el.child(iconCell(look, line.facts.github ? "github" : "local")).child(" "),
+      )
       .child(
         div()
           .text_color(t.text)

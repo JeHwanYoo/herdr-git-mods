@@ -38,13 +38,13 @@ import { cols, DIALOG, type Look, rows } from "./theme.ts";
 import { type ActionCell, box, filterBar, isChord, scrollbar, spinner } from "./widgets.ts";
 import type { WorkspacesBox } from "./workspaces.ts";
 
-const GRAPH_ACTIONS: readonly { id: GraphAction; label: string; shortcut: string; icon: string }[] = [
-  { id: "checkout", label: "Checkout", shortcut: "x", icon: "\uf417" },
-  { id: "rebase", label: "Rebase", shortcut: "r", icon: "\uf47f" },
-  { id: "cherry-pick", label: "Cherry-pick", shortcut: "y", icon: "⎇" },
-  { id: "revert", label: "Revert", shortcut: "v", icon: "↩" },
-  { id: "reset", label: "Reset", shortcut: "t", icon: "\uf464" },
-  { id: "copy-sha", label: "Copy SHA", shortcut: "h", icon: "\uf0c5" },
+const GRAPH_ACTIONS: readonly (Pick<ActionCell, "label" | "shortcut" | "icon" | "symbol"> & { id: GraphAction })[] = [
+  { id: "checkout", label: "Checkout", shortcut: "x", icon: "checkout" },
+  { id: "rebase", label: "Rebase", shortcut: "r", icon: "rebase" },
+  { id: "cherry-pick", label: "Cherry-pick", shortcut: "y", symbol: "⎇" },
+  { id: "revert", label: "Revert", shortcut: "v", symbol: "↩" },
+  { id: "reset", label: "Reset", shortcut: "t", icon: "reset" },
+  { id: "copy-sha", label: "Copy SHA", shortcut: "h", icon: "copy" },
 ];
 
 const REVEAL_LIMIT = 10_000;
@@ -258,10 +258,8 @@ export class GraphTab implements TabView {
   toolbar(): ActionCell[] {
     const enabled = this.services.repository()?.state === "ready" && !!this.selectedCommit();
     return GRAPH_ACTIONS.map((action) => ({
+      ...action,
       id: `git-graph-${action.id}`,
-      label: action.label,
-      shortcut: action.shortcut,
-      icon: action.icon,
       enabled,
       onClick: (cx: Context) => this.services.commands().shortcut(action.id, cx),
     }));

@@ -14,8 +14,17 @@ import { type GitAt, inspectProject, inspectWorktree, projectRoot, type Worktree
 import type { RepositoryLocation } from "../runtime/context.ts";
 import { showResult } from "./commands/result.ts";
 import type { Services } from "./shell.ts";
-import { type Color, DIALOG, GLYPH, type Look, rows as rowsPx } from "./theme.ts";
-import { box, displayWidth, isChord, spinner, truncateToWidth } from "./widgets.ts";
+import { DIALOG, GLYPH, type Look, rows as rowsPx } from "./theme.ts";
+import {
+  box,
+  type CellSpan,
+  displayWidth,
+  isChord,
+  spanElements,
+  spansWidth,
+  spinner,
+  truncateToWidth,
+} from "./widgets.ts";
 import { openWorkspacePicker } from "./workspaces/picker.ts";
 import { ProjectRegistry } from "./workspaces/projects.ts";
 import {
@@ -44,12 +53,6 @@ interface Placed {
   height: number;
 }
 
-interface Span {
-  text: string;
-  color?: Color;
-  bold?: boolean;
-}
-
 interface Inspection {
   cwd: string | null;
   on: string | null;
@@ -65,21 +68,14 @@ function gitAt(on: string | null): GitAt {
   return (cwd) => (args) => exec("git", args, { cwd, on });
 }
 
-function line(look: Look, spans: Span[]): Element {
-  const row = h_flex().flex_none().h(look.row).min_w(0).whitespace_nowrap().overflow_hidden();
-  for (const span of spans)
-    row.child(
-      div()
-        .flex_none()
-        .when(!!span.color, (el) => el.text_color(span.color ?? look.t.text))
-        .when(!!span.bold, (el) => el.font_weight(700))
-        .child(span.text),
-    );
-  return row;
-}
-
-function spansWidth(spans: Span[]): number {
-  return spans.reduce((total, span) => total + displayWidth(span.text), 0);
+function line(look: Look, spans: CellSpan[]): Element {
+  return h_flex()
+    .flex_none()
+    .h(look.row)
+    .min_w(0)
+    .whitespace_nowrap()
+    .overflow_hidden()
+    .children(spanElements(look, spans));
 }
 
 function fitted(width: number, prefix: number, suffix: number): number {
@@ -476,19 +472,19 @@ export class WorkspacesBox {
   private nameLine(look: Look, row: RepositoryRow, focusedRow: boolean, index: number): Element {
     const { t } = look;
     const switching = this.switching === rowKey(row);
-    const glyph = row.kind.type === "worktree" ? GLYPH.worktree : GLYPH.repository;
-    const marker: Span[] = switching
+    const icon = row.kind.type === "worktree" ? "worktree" : "repository";
+    const marker: CellSpan[] = switching
       ? []
       : this.active(row)
         ? [{ text: GLYPH.marker, color: t.accent }]
-        : [{ text: `${glyph} `, color: t.hint }];
+        : [{ text: " ", icon, color: t.hint }];
     const name = pathLabel(row.path);
-    const spans: Span[] = [...marker];
+    const spans: CellSpan[] = [...marker];
     if (row.kind.type === "worktree") spans.push({ text: `  ${worktreeLabel(row.path, row.kind.project)}` });
     else spans.push({ text: name });
     if (row.kind.type === "project") {
       const count = ` · ${row.worktrees} ${row.worktrees === 1 ? "worktree" : "worktrees"}`;
-      if (this.width - 2 >= displayWidth(name) + displayWidth(count)) spans.push({ text: count, color: t.hint });
+      if (this.width >= spansWidth(spans) + displayWidth(count)) spans.push({ text: count, color: t.hint });
     }
     const content = line(look, spans).flex_1();
     const result = h_flex().flex_none().h(look.row).min_w(0);
@@ -519,16 +515,16 @@ export class WorkspacesBox {
     if (row.error) return line(look, [{ text: row.error, color: row.kind.type === "current" ? t.warning : t.error }]);
     if (!row.branch) return line(look, []);
     const overview = row.overview;
-    const working: Span[] = [];
+    const working: CellSpan[] = [];
     if (overview && overview.changedPaths > 0) {
       working.push({ text: "● ", color: t.warning }, { text: `${overview.changedPaths}f`, color: t.hint });
       if (overview.additions > 0) working.push({ text: ` +${overview.additions}`, color: t.success });
       if (overview.deletions > 0) working.push({ text: ` -${overview.deletions}`, color: t.error });
     }
-    const prefix: Span = { text: `${GLYPH.branch} `, color: t.accent };
+    const prefix: CellSpan = { text: " ", icon: "branch", color: t.accent };
     const suffix = working.length ? 3 + spansWidth(working) : 0;
-    const branch = truncateToWidth(row.branch.checkedOut, fitted(this.width, displayWidth(prefix.text), suffix));
-    const spans: Span[] = [prefix, { text: branch, color: t.accent }];
+    const branch = truncateToWidth(row.branch.checkedOut, fitted(this.width, spansWidth([prefix]), suffix));
+    const spans: CellSpan[] = [prefix, { text: branch, color: t.accent }];
     if (working.length) spans.push({ text: GLYPH.separator }, ...working);
     return line(look, spans);
   }
@@ -538,16 +534,13 @@ export class WorkspacesBox {
     const branch = row.branch;
     if (!branch?.upstream) return null;
     if (this.switching === rowKey(row)) return line(look, []);
-    const sync: Span[] = [];
+    const sync: CellSpan[] = [];
     if (branch.ahead === 0 && branch.behind === 0) sync.push({ text: "✓", color: t.success });
     if (branch.ahead > 0) sync.push({ text: `↑${branch.ahead}`, color: t.success });
     if (branch.ahead > 0 && branch.behind > 0) sync.push({ text: " " });
     if (branch.behind > 0) sync.push({ text: `↓${branch.behind}`, color: t.warning });
-    const prefix: Span = { text: `${GLYPH.remote} `, color: t.accent };
-    const upstream = truncateToWidth(
-      branch.upstream,
-      fitted(this.width, displayWidth(prefix.text), 3 + spansWidth(sync)),
-    );
+    const prefix: CellSpan = { text: " ", icon: "remote", color: t.accent };
+    const upstream = truncateToWidth(branch.upstream, fitted(this.width, spansWidth([prefix]), 3 + spansWidth(sync)));
     return line(look, [prefix, { text: upstream, color: t.hint }, { text: GLYPH.separator }, ...sync]);
   }
 
