@@ -33,7 +33,12 @@ export async function runFullHistory(source: string) {
   let refs = 0;
 
   async function command(args: string[], cwd = repo) {
-    const child = Bun.spawn(["git", ...args], { cwd, env, stdout: "pipe", stderr: "pipe" });
+    const child = Bun.spawn(["git", "-c", `safe.directory=${resolve(source)}`, ...args], {
+      cwd,
+      env,
+      stdout: "pipe",
+      stderr: "pipe",
+    });
     const timer = setTimeout(() => child.kill(), 300_000);
     try {
       const [stdout, stderr, code] = await Promise.all([
