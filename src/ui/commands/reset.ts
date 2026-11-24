@@ -4,7 +4,7 @@ import type { BranchTarget } from "../../git/ref-operations.ts";
 import type { ResetMode } from "../../git/workflows.ts";
 import { shortCommit } from "../shell.ts";
 import { DIALOG, type Look, rows } from "../theme.ts";
-import { box, dialogFooter, ListViewport, padToWidth } from "../widgets.ts";
+import { box, dialogFooter, displayWidth, ListViewport, padToWidth } from "../widgets.ts";
 import { RESET_MODES } from "./catalog.ts";
 import { Dialog, type DialogOptions } from "./dialog.ts";
 import type { CommandHost } from "./host.ts";
@@ -23,6 +23,15 @@ const EFFECT: Record<ResetMode, string> = {
   hard: "The current branch, index, and tracked working tree move to the target.",
 };
 
+const HARD_WARNING = "Tracked changes will be discarded. Obstructing untracked paths may be removed.";
+const REMOTE_NOTE = "Remote refs are not changed. The target branch is not checked out.";
+const NOTE_COLUMNS = DIALOG.wide - 6;
+const CONFIRM_CHROME = 14;
+
+function wrappedRows(text: string): number {
+  return Math.max(1, Math.ceil(displayWidth(text) / NOTE_COLUMNS));
+}
+
 export class ResetFlow extends Dialog {
   private step: Step = "mode";
   private readonly modeList = new ListViewport("git-reset-modes");
@@ -40,7 +49,13 @@ export class ResetFlow extends Dialog {
   }
 
   protected options(): DialogOptions {
-    return { title: "Reset", width: DIALOG.wide, height: this.step === "confirm" ? 18 : 12 };
+    return { title: "Reset", width: DIALOG.wide, height: this.step === "confirm" ? this.confirmHeight() : 11 };
+  }
+
+  private confirmHeight(): number {
+    const mode = this.mode().mode;
+    const notes = [EFFECT[mode], REMOTE_NOTE, ...(mode === "hard" ? [HARD_WARNING] : [])];
+    return CONFIRM_CHROME + notes.reduce((sum, note) => sum + wrappedRows(note), 0);
   }
 
   private mode(): (typeof RESET_MODES)[number] {
@@ -150,21 +165,8 @@ export class ResetFlow extends Dialog {
         .child(EFFECT[mode.mode]),
     );
     if (mode.mode === "hard")
-      body.child(
-        div()
-          .whitespace_normal()
-          .text_color(t.error)
-          .font_weight(700)
-          .child("Tracked changes will be discarded. Obstructing untracked paths may be removed."),
-      );
-    body
-      .child(div().h(look.row))
-      .child(
-        div()
-          .whitespace_normal()
-          .text_color(t.hint)
-          .child("Remote refs are not changed. The target branch is not checked out."),
-      );
+      body.child(div().whitespace_normal().text_color(t.error).font_weight(700).child(HARD_WARNING));
+    body.child(div().h(look.row)).child(div().whitespace_normal().text_color(t.hint).child(REMOTE_NOTE));
     return box(look, { id: "git-reset-confirm-box", title: "Confirm Reset" }, body).flex_1();
   }
 
@@ -176,7 +178,6 @@ export class ResetFlow extends Dialog {
       .min_h(rows(look, 10))
       .child(this.header(look))
       .child(v_flex().flex_1().min_h(0).child(content))
-      .child(div().h(look.row))
       .child(
         dialogFooter(
           look,

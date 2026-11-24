@@ -1,9 +1,8 @@
-const KEY = "git-projects";
+import { setShared, shared } from "herdr";
 
-function load(): string[] {
-  const raw = localStorage.getItem(KEY);
-  if (!raw) return [];
-  const value: unknown = JSON.parse(raw);
+const KEY = "git.projects";
+
+function parse(value: unknown): string[] {
   const projects = typeof value === "object" && value !== null && "projects" in value ? value.projects : [];
   if (!Array.isArray(projects)) return [];
   return [...new Set(projects.filter((root): root is string => typeof root === "string"))];
@@ -11,27 +10,34 @@ function load(): string[] {
 
 export class ProjectRegistry {
   private list: string[] = [];
-  readonly error: string | null = null;
+  private seen = "[]";
 
   constructor() {
-    try {
-      this.list = load();
-    } catch (error) {
-      this.error = `Registered projects are invalid: ${error instanceof Error ? error.message : String(error)}`;
-    }
+    this.changed();
   }
 
   roots(): readonly string[] {
     return this.list;
   }
 
+  changed(): boolean {
+    const list = parse(shared(KEY));
+    const seen = JSON.stringify(list);
+    if (seen === this.seen) return false;
+    this.list = list;
+    this.seen = seen;
+    return true;
+  }
+
   add(root: string): boolean {
+    this.changed();
     if (this.list.includes(root)) return false;
     this.save([...this.list, root]);
     return true;
   }
 
   remove(root: string): boolean {
+    this.changed();
     if (!this.list.includes(root)) return false;
     this.save(this.list.filter((entry) => entry !== root));
     return true;
@@ -39,10 +45,11 @@ export class ProjectRegistry {
 
   private save(list: string[]): void {
     try {
-      localStorage.setItem(KEY, JSON.stringify({ projects: list }));
+      setShared(KEY, { projects: list });
     } catch (error) {
       throw new Error(`Could not save registered projects: ${error instanceof Error ? error.message : String(error)}`);
     }
     this.list = list;
+    this.seen = JSON.stringify(list);
   }
 }

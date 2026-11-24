@@ -118,7 +118,6 @@ export class WorkspacesBox {
     cx: AsyncContext,
   ) {
     this.handle = cx.focus_handle();
-    if (this.registry.error) services.reportError(this.registry.error);
   }
 
   release(): void {
@@ -137,6 +136,12 @@ export class WorkspacesBox {
 
   progress(): string | null {
     return this.adding ? "Choosing Project" : null;
+  }
+
+  syncProjects(cx: AsyncContext): void {
+    if (!this.registry.changed()) return;
+    this.rebuild();
+    this.refresh(cx);
   }
 
   canRemoveProject(): boolean {

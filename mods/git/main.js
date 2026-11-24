@@ -5098,11 +5098,14 @@ class Dialog {
   changed() {}
   show() {
     const options = this.options();
+    const current = () => this.options();
     const spec = {
       kind: "custom",
       title: options.title,
       width: options.width,
-      height: options.height,
+      get height() {
+        return current().height;
+      },
       render: (look) => this.body(look).track_focus(this.handle),
       key: (event, cx) => this.key(event, cx),
       onCancel: () => this.release()
@@ -6809,6 +6812,13 @@ var EFFECT = {
   mixed: "The current branch and index move to the target. The working tree is preserved.",
   hard: "The current branch, index, and tracked working tree move to the target."
 };
+var HARD_WARNING = "Tracked changes will be discarded. Obstructing untracked paths may be removed.";
+var REMOTE_NOTE = "Remote refs are not changed. The target branch is not checked out.";
+var NOTE_COLUMNS = DIALOG.wide - 6;
+var CONFIRM_CHROME = 14;
+function wrappedRows(text) {
+  return Math.max(1, Math.ceil(displayWidth(text) / NOTE_COLUMNS));
+}
 
 class ResetFlow extends Dialog {
   host;
@@ -6824,7 +6834,12 @@ class ResetFlow extends Dialog {
     this.show();
   }
   options() {
-    return { title: "Reset", width: DIALOG.wide, height: this.step === "confirm" ? 18 : 12 };
+    return { title: "Reset", width: DIALOG.wide, height: this.step === "confirm" ? this.confirmHeight() : 11 };
+  }
+  confirmHeight() {
+    const mode = this.mode().mode;
+    const notes = [EFFECT[mode], REMOTE_NOTE, ...mode === "hard" ? [HARD_WARNING] : []];
+    return CONFIRM_CHROME + notes.reduce((sum, note) => sum + wrappedRows(note), 0);
   }
   mode() {
     return RESET_MODES[Math.min(this.modeList.selected, RESET_MODES.length - 1)] ?? RESET_MODES[0];
@@ -6906,14 +6921,14 @@ class ResetFlow extends Dialog {
     body.child(this.pair(look, "Target  ", target.name, shortCommit(target.commit))).child(this.pair(look, "Mode    ", mode.label)).child(div15().h(look.row)).child(div15().text_color(t.accent).child(`git reset --${mode.mode} ${target.commit}`)).child(div15().h(look.row));
     body.child(div15().whitespace_normal().text_color(mode.mode === "mixed" ? t.warning : t.text).child(EFFECT[mode.mode]));
     if (mode.mode === "hard")
-      body.child(div15().whitespace_normal().text_color(t.error).font_weight(700).child("Tracked changes will be discarded. Obstructing untracked paths may be removed."));
-    body.child(div15().h(look.row)).child(div15().whitespace_normal().text_color(t.hint).child("Remote refs are not changed. The target branch is not checked out."));
+      body.child(div15().whitespace_normal().text_color(t.error).font_weight(700).child(HARD_WARNING));
+    body.child(div15().h(look.row)).child(div15().whitespace_normal().text_color(t.hint).child(REMOTE_NOTE));
     return box(look, { id: "git-reset-confirm-box", title: "Confirm Reset" }, body).flex_1();
   }
   body(look) {
     const content = this.step === "mode" ? this.modes(look) : this.confirmation(look);
     const labels = this.step === "mode" ? ["[Enter] Continue", "[Esc] Cancel"] : ["[Enter] Reset", "[Esc] Back"];
-    return v_flex15().size_full().min_h(rows(look, 10)).child(this.header(look)).child(v_flex15().flex_1().min_h(0).child(content)).child(div15().h(look.row)).child(dialogFooter(look, { id: "git-reset-primary", label: labels[0] ?? "", onClick: (cx) => this.advance(cx) }, { id: "git-reset-secondary", label: labels[1] ?? "", onClick: (cx) => this.back(cx) }));
+    return v_flex15().size_full().min_h(rows(look, 10)).child(this.header(look)).child(v_flex15().flex_1().min_h(0).child(content)).child(dialogFooter(look, { id: "git-reset-primary", label: labels[0] ?? "", onClick: (cx) => this.advance(cx) }, { id: "git-reset-secondary", label: labels[1] ?? "", onClick: (cx) => this.back(cx) }));
   }
 }
 
@@ -10606,12 +10621,9 @@ function openWorkspacePicker(overlay, options) {
 }
 
 // src/ui/workspaces/projects.ts
-var KEY = "git-projects";
-function load() {
-  const raw = localStorage.getItem(KEY);
-  if (!raw)
-    return [];
-  const value = JSON.parse(raw);
+import { setShared, shared } from "herdr";
+var KEY = "git.projects";
+function parse(value) {
   const projects = typeof value === "object" && value !== null && "projects" in value ? value.projects : [];
   if (!Array.isArray(projects))
     return [];
@@ -10620,24 +10632,31 @@ function load() {
 
 class ProjectRegistry {
   list = [];
-  error = null;
+  seen = "[]";
   constructor() {
-    try {
-      this.list = load();
-    } catch (error) {
-      this.error = `Registered projects are invalid: ${error instanceof Error ? error.message : String(error)}`;
-    }
+    this.changed();
   }
   roots() {
     return this.list;
   }
+  changed() {
+    const list = parse(shared(KEY));
+    const seen = JSON.stringify(list);
+    if (seen === this.seen)
+      return false;
+    this.list = list;
+    this.seen = seen;
+    return true;
+  }
   add(root) {
+    this.changed();
     if (this.list.includes(root))
       return false;
     this.save([...this.list, root]);
     return true;
   }
   remove(root) {
+    this.changed();
     if (!this.list.includes(root))
       return false;
     this.save(this.list.filter((entry) => entry !== root));
@@ -10645,11 +10664,12 @@ class ProjectRegistry {
   }
   save(list) {
     try {
-      localStorage.setItem(KEY, JSON.stringify({ projects: list }));
+      setShared(KEY, { projects: list });
     } catch (error) {
       throw new Error(`Could not save registered projects: ${error instanceof Error ? error.message : String(error)}`);
     }
     this.list = list;
+    this.seen = JSON.stringify(list);
   }
 }
 
@@ -10711,8 +10731,6 @@ class WorkspacesBox {
   constructor(services, cx) {
     this.services = services;
     this.handle = cx.focus_handle();
-    if (this.registry.error)
-      services.reportError(this.registry.error);
   }
   release() {
     this.alive = false;
@@ -10727,6 +10745,12 @@ class WorkspacesBox {
   }
   progress() {
     return this.adding ? "Choosing Project" : null;
+  }
+  syncProjects(cx) {
+    if (!this.registry.changed())
+      return;
+    this.rebuild();
+    this.refresh(cx);
   }
   canRemoveProject() {
     return this.rows[this.selected]?.kind.type === "project";
@@ -11466,6 +11490,7 @@ class Session {
   render(cx) {
     if (JSON.stringify(this.source.current()) !== this.context)
       this.refresh("repository", cx);
+    this.workspaces.syncProjects(cx);
     const view = look();
     const tab = this.tabs[this.tab];
     const repository = this.repository;

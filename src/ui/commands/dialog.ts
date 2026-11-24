@@ -43,11 +43,14 @@ export abstract class Dialog {
 
   protected show(): void {
     const options = this.options();
+    const current = () => this.options();
     const spec = {
       kind: "custom" as const,
       title: options.title,
       width: options.width,
-      height: options.height,
+      get height() {
+        return current().height;
+      },
       render: (look: Look) => this.body(look).track_focus(this.handle),
       key: (event: KeyEvent, cx: Context) => this.key(event, cx),
       onCancel: () => this.release(),

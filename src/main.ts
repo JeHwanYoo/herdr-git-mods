@@ -319,6 +319,7 @@ class Session {
 
   render(cx: Context): Element {
     if (JSON.stringify(this.source.current()) !== this.context) this.refresh("repository", cx);
+    this.workspaces.syncProjects(cx);
     const view = look();
     const tab = this.tabs[this.tab];
     const repository = this.repository;

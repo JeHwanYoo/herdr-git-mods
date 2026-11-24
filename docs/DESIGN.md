@@ -68,7 +68,7 @@ Animate with Herdr's native tools: `.frames()`, `svg().spin()`, `.loop()` and `.
 - Herdr owns the window: Git opens as a pane (see [ARCHITECTURE.md](ARCHITECTURE.md#pane-presentation)), and `q` does not close it. Herdr's pane header already names it, so the TUI's `Git` title rule is left out.
 - Settings › Native graph replaces the Kitty graphics switch: on draws smooth native curves, off draws box-drawing lanes.
 - Update Herdr Git Mods shows Herdr and herdr-core versions and opens Herdr's update settings; the mod has no updater of its own.
-- Projects in Workspaces are local to this machine and stored in the mod's `localStorage`.
+- Projects in Workspaces are local to this machine and stored in Herdr shared state, so every Git pane shows the same list.
 - Syntax colors come from the mod's highlighter, not syntect.
 - Cherry-pick, Revert and Reset use the target picker of Checkout and Rebase (selected commit, branches, typed hash) instead of acting on the selected commit directly, so every commit action can target a branch.
 - Diff Last compares a root commit with Git's empty tree, showing all initial additions on any branch or detached HEAD. Uncommitted changes still take precedence.
