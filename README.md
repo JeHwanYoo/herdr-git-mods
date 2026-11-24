@@ -44,7 +44,7 @@ Git checks GitHub Releases for updates while its pane is open. Open **Settings â
 | Changes                     | Review changed files, stage or unstage them, and discard tracked changes                                                                           |
 | Diffs                       | View changes side by side and compare commits or branches                                                                                          |
 | Graph                       | Browse and filter commit history with a lane graph                                                                                                 |
-| Files                       | Browse and search files and contents. Preview source with syntax highlighting and working-tree changes, or local PNG, JPEG, and WebP images       |
+| Files                       | Browse files and search file contents. Preview source with syntax highlighting and working-tree changes, or view local PNG, JPEG, and WebP images. |
 | Blame & line history        | See who changed selected lines and review their history                                                                                            |
 | Copy                        | Copy selected code with its file path and line numbers                                                                                             |
 | Commit                      | Create or amend a commit                                                                                                                           |
