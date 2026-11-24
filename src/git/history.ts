@@ -92,7 +92,6 @@ async function historyCursor(git: RunGit, start: string | null): Promise<History
       : lines(await run(git, ["rev-list", "--all", "--no-walk=unsorted"]))
   ).map(objectId);
   if (revisions.length < 2) return { start, revisions, traversalRevisions: revisions };
-  // Ancestor tips force Git's generation walk back to the oldest ref before it emits a page.
   const independent = new Set(lines(await run(git, ["merge-base", "--independent", ...revisions])).map(objectId));
   const traversalRevisions = revisions.filter((sha) => independent.has(sha));
   return { start, revisions, traversalRevisions };

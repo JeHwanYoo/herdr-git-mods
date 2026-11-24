@@ -15,7 +15,6 @@ async function config(git: RunGit, type: "--bool" | "--int", key: string): Promi
   return result.code === 1 ? null : checked(result, "config");
 }
 
-// Ready means preparation completed; Git may decline writes for grafts.
 export async function prepareHistory(git: RunGit): Promise<HistoryPreparation> {
   const [enabled, auto] = await Promise.all([
     config(git, "--bool", "core.commitGraph"),

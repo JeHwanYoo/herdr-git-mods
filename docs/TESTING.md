@@ -76,16 +76,16 @@ Run `bun run performance` locally or use the Linux performance workflow. It main
 
 The gate calls production modules with real Git and validates their results. Each scenario records its first call separately and 20 subsequent calls. The nearest-rank p95 must meet the budget below; every call, including the first, must remain below twice that budget. The first call is not a cold-cache measurement: checkout and earlier scenarios affect filesystem caches. Thresholds are product targets, not guarantees for every machine: ordinary actions should complete within half a second, previews within 200 ms, and repository-wide search within one second.
 
-| Scenario                             | p95 budget |
-| ------------------------------------ | ---------- |
-| Repository status                    | 500 ms     |
-| File listing and tree construction   | 300 ms     |
-| First 100 synthetic history entries  | 500 ms     |
-| Repository content search            | 1000 ms    |
-| Blame for 40 visible lines           | 500 ms     |
-| Working diff preview                 | 200 ms     |
-| Changes from a shared status snapshot | 500 ms  |
-| Stage and status refresh of one file | 500 ms     |
+| Scenario                              | p95 budget |
+| ------------------------------------- | ---------- |
+| Repository status                     | 500 ms     |
+| File listing and tree construction    | 300 ms     |
+| First 100 synthetic history entries   | 500 ms     |
+| Repository content search             | 1000 ms    |
+| Blame for 40 visible lines            | 500 ms     |
+| Working diff preview                  | 200 ms     |
+| Changes from a shared status snapshot | 500 ms     |
+| Stage and status refresh of one file  | 500 ms     |
 
 Any exceeded budget or incorrect result fails the job. `performance.json` records samples and environment; override its location with `PERF_REPORT`. CI uploads it even on failure. Compare Linux runner results separately from local OS results. Clone failures fail the job rather than skipping the gate. This benchmark modifies only its disposable clone.
 
@@ -131,11 +131,11 @@ Run `bun run performance:full /path/to/full/linux` in addition to the bounded CI
 
 The report (`performance-full.json`, or `PERF_REPORT`) records the revision, commit/ref/file counts, environment, setup, an unprepared first-page traversal, one-time graph preparation, and preparation plus the first usable page. Clone/setup is excluded. The unprepared traversal explicitly disables commit-graph reads, even when the source already has an index. These are not cold filesystem-cache measurements.
 
-| Full-history scenario | p95 budget | Maximum individual call |
-| --- | --- | --- |
-| Prepared first 100 commits | 500 ms | 1,000 ms |
-| Prepared next 100 commits | 500 ms | 1,000 ms |
-| Changes from an existing status snapshot | 500 ms | 1,000 ms |
+| Full-history scenario                    | p95 budget | Maximum individual call |
+| ---------------------------------------- | ---------- | ----------------------- |
+| Prepared first 100 commits               | 500 ms     | 1,000 ms                |
+| Prepared next 100 commits                | 500 ms     | 1,000 ms                |
+| Changes from an existing status snapshot | 500 ms     | 1,000 ms                |
 
 Each scenario records the first call and 20 further samples. Pagination walks 2,200 commits and checks exact order and uniqueness against Git's traversal of the frozen revisions. Before/after preparation must return identical first-page data. Changes includes a tracked edit and an untracked file; its timing excludes the preceding status call, not merely the Git process portion. Failures and budget violations make the command fail. One-time preparation is reported separately and is not hidden in the prepared latency figures.
 
@@ -145,11 +145,11 @@ For native UI acceptance, verify the same source in Herdr's QuickJS runtime: pre
 
 macOS arm64, Apple Git 2.54.0, Bun 1.4.4; Linux `aebb7274476403040d582c61478df8f4a7bf9cd3`, 1,507,066 reachable commits, 97,371 files and 957 refs. The unprepared first-page traversal took 8,950 ms. One-time preparation took 14,891 ms; preparation plus the first page took 15,076 ms. Preparation therefore makes the first use slower, not faster; subsequent queries use the persistent Git index.
 
-| Scenario | Measured p95 | Measured maximum |
-| --- | --- | --- |
-| Prepared first 100 commits | 214 ms | 260 ms |
-| Next 100 commits | 56 ms | 65 ms |
-| Changes after status | 189 ms | 196 ms |
+| Scenario                   | Measured p95 | Measured maximum |
+| -------------------------- | ------------ | ---------------- |
+| Prepared first 100 commits | 214 ms       | 260 ms           |
+| Next 100 commits           | 56 ms        | 65 ms            |
+| Changes after status       | 189 ms       | 196 ms           |
 
 All three budgets passed, with exact first-page equivalence and 2,200 commits checked for order and duplication. These local measurements do not claim the same timings on the constrained Linux container or other hardware.
 

@@ -66,6 +66,10 @@ For documentation changes, check links, commands, and formatting. Keep README.md
 
 The repository owner updates `RECIPE.md` and `preview.png` for releases. Leave them unchanged in contribution pull requests unless the maintainer asks.
 
+## Release
+
+In GitHub Actions, open **Release**, select **Run workflow** on `main`, and choose `patch`, `minor`, or `major`. The first run publishes `v0.1.0` regardless of the choice. The workflow checks the installable files, runs CI, pushes the version commit and tag together, and publishes the GitHub release with generated notes. If release creation fails after the tag is pushed, re-run the failed job from the same Actions run. If the branch advanced before the push, start a new run from `main`.
+
 ## Open a pull request
 
 Push your branch to your fork and open a pull request against `main`. Use the [PR template](.github/pull_request_template.md), replace its prompts with your answers, and keep its section headings. Write a title that names the change.
