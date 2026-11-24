@@ -6,6 +6,7 @@ import { type Repository, type RunGit, readRepository } from "./git/repository.t
 import { RepositoryContext } from "./runtime/context.ts";
 import { GitPlacement } from "./runtime/pane.ts";
 import { ChangesTab } from "./ui/changes.ts";
+import { UPDATE_INTERVAL } from "./ui/commands/update.ts";
 import { Commands } from "./ui/commands.ts";
 import { FilesTab } from "./ui/explorer.ts";
 import { GraphTab } from "./ui/graph.ts";
@@ -138,7 +139,11 @@ class Session {
       commands: () => this.commands,
     };
     this.workspaces = new WorkspacesBox(this.services, cx);
-    this.settings = new SettingsTab(cx);
+    this.settings = new SettingsTab(
+      cx,
+      (cx) => this.commands.dispatch("update", cx),
+      () => this.commands.update.status(),
+    );
     const changes = new ChangesTab(this.services, this.workspaces, cx);
     this.changes = changes;
     this.graph = new GraphTab(this.services, cx, () => this.settings.graph, this.workspaces);
@@ -153,6 +158,8 @@ class Session {
     });
     changes.activate(cx);
     this.listenCommands(cx);
+    this.commands.update.background(cx);
+    cx.timer.every(UPDATE_INTERVAL, (cx) => this.commands.update.background(cx));
     this.refresh("repository", cx);
     cx.timer.every(REFRESH_MS, (cx) => {
       if (this.settings.autoRefresh) this.refresh("changes", cx);

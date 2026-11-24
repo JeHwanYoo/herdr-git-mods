@@ -1,5 +1,4 @@
 import type { AsyncContext, Context } from "gpui-kit";
-import { run, updates } from "herdr";
 import type { RebaseTarget } from "../git/rebase.ts";
 import type { BranchTarget } from "../git/ref-operations.ts";
 import { type GitOperation, operationPreview, ReviewedOperation, recoveryCommands } from "../git/workflows.ts";
@@ -23,18 +22,11 @@ import { openAddRemote, RemoteList } from "./commands/remote.ts";
 import { ResetFlow } from "./commands/reset.ts";
 import { type ResultLine, showResult, showResultLines } from "./commands/result.ts";
 import { type TargetCommand, TargetPicker } from "./commands/target.ts";
+import { ModUpdate } from "./commands/update.ts";
 import type { FilesTab } from "./explorer.ts";
 import type { GraphTab } from "./graph.ts";
 import type { PickerRow } from "./overlay.ts";
-import {
-  type AppShortcut,
-  type CommandHandler,
-  type GraphAction,
-  type QuickAction,
-  type QuickActionState,
-  type Services,
-  VERSION,
-} from "./shell.ts";
+import type { AppShortcut, CommandHandler, GraphAction, QuickAction, QuickActionState, Services } from "./shell.ts";
 import { DIALOG } from "./theme.ts";
 import type { WorkspacesBox } from "./workspaces.ts";
 
@@ -92,14 +84,18 @@ function pullLines(preview: string, output: string, success: boolean): ResultLin
 
 export class Commands implements CommandHandler, CommandHost {
   private running: CommandId | null = null;
+  readonly update: ModUpdate;
 
   constructor(
     readonly services: Services,
     private readonly targets: CommandTargets,
-  ) {}
+  ) {
+    this.update = new ModUpdate(services.overlay);
+  }
 
   release(): void {
     this.running = null;
+    this.update.release();
   }
 
   context(): CommandContext {
@@ -125,14 +121,12 @@ export class Commands implements CommandHandler, CommandHost {
 
   private rows(query: string): PickerRow[] {
     const context = this.context();
-    const update = updates();
-    const available = !!(update.app.ready || update.core.ready);
     return COMMANDS.filter((id) => TITLES[id].toLowerCase().includes(query)).map((id) => {
       const reason = unavailable(id, context);
       return {
         id,
         label: TITLES[id],
-        status: id === "update" && available ? "Update available" : statusLabel(reason),
+        status: (id === "update" ? this.update.status() : null) ?? statusLabel(reason),
         disabled: reason !== null,
       };
     });
@@ -238,31 +232,6 @@ export class Commands implements CommandHandler, CommandHost {
       footer: "Choose a stash operation",
       primary: "[Enter] Continue",
       onChoose: (row, cx) => this.dispatch(row.id as CommandId, cx),
-    });
-  }
-
-  private openUpdate(): void {
-    const info = updates();
-    const app = `Herdr ${info.app.version}${info.app.ready ? ` · ${info.app.ready} ready` : ""}`;
-    const core = `herdr-core ${info.core.version ?? "unavailable"}${info.core.ready ? ` · ${info.core.ready} ready` : ""}${info.core.managed ? ` · managed by ${info.core.managed}` : ""}`;
-    const lines = [
-      `Herdr Git Mods v${VERSION} ships inside the Herdr app and updates with it.`,
-      "",
-      app,
-      core,
-      "",
-      info.checks ? "Open Herdr's update settings to install updates." : "This Herdr build does not update itself.",
-    ];
-    this.services.overlay.open({
-      kind: "confirm",
-      title: "Update Herdr Git Mods",
-      width: DIALOG.medium,
-      lines,
-      primary: "[Enter] Update",
-      enabled: () => info.checks,
-      onConfirm: () => {
-        run("app.settings", { section: "updates" });
-      },
     });
   }
 
@@ -392,7 +361,7 @@ export class Commands implements CommandHandler, CommandHost {
 
   private flows(id: CommandId, cx: AsyncContext): boolean {
     const flows: Partial<Record<CommandId, () => void>> = {
-      update: () => this.openUpdate(),
+      update: () => this.update.open(cx),
       refresh: () => this.services.refresh("repository", cx),
       "switch-repository": () => this.targets.workspaces.manage(cx),
       reset: () => this.openTarget("reset", cx),

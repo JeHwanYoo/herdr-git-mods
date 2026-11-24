@@ -20,6 +20,7 @@ Git opens as a full-height mod pane at the active tab's far right. Installation 
 src/
 ├── main.ts       View entry: implements Services; owns repository context, status, mutation queue, shell, tabs and dialog host
 ├── git/          Git reads, parsing and operations; no host imports
+├── herdr-builtins.d.ts   Types for native APIs absent from the Herdr declarations
 ├── ui/           Shell, tabs, dialogs, theme and widgets (one module per TUI screen)
 │   ├── theme.ts, widgets.ts, shell.ts, overlay.ts   Shared foundation
 │   ├── changes.ts + changes/     Changes tab
@@ -29,7 +30,8 @@ src/
 │   ├── commands.ts + commands/   Command palette and every operation dialog
 │   ├── settings.ts               Settings tab
 │   └── code-view.ts, syntax.ts   Code and diff rendering shared by the tabs
-└── runtime/      Pane placement, repository selection and Herdr context
+├── runtime/      Pane placement, repository selection, Herdr context and release verification
+└── version.ts    Version and release bundle format shared with the build
 mods/git/         Installable manifest, icon and generated bundle
 tests/            Real-Git and pane-context regression tests
 scripts/          Build, checks and local installation
@@ -62,6 +64,7 @@ ui/graph.ts, ui/graph/* → code-view.ts, commands/result.ts, workspaces.ts, fou
 ui/explorer.ts, ui/explorer/* → code-view.ts, changes/review.ts, commands/result.ts, workspaces.ts, foundation; git/{files,history,repository}.ts
 ui/workspaces.ts, ui/workspaces/* → commands/result.ts, foundation; runtime/context.ts; git/workspaces.ts
 ui/commands.ts, ui/commands/* → changes.ts, graph.ts, explorer.ts, workspaces.ts (tab APIs), foundation; git/{workflows,rebase,remotes,ref-operations}.ts
+ui/commands/update.ts → runtime/mod-release.ts
 ui/settings.ts → shell.ts, theme.ts, widgets.ts
 git/* → git/repository.ts; git/{diff,workspaces}.ts → git/comparison.ts
 runtime/pane.ts → context.ts, pane-target.ts
@@ -71,6 +74,7 @@ runtime/pane-target.ts, runtime/repository-selection.ts, git/repository.ts → n
 
 "Foundation" is `theme.ts`, `widgets.ts`, `shell.ts` and `overlay.ts`. Only the dependencies shown above are allowed.
 
+- The release workflow uploads the tagged `mods/git/main.js` as the `main.js` asset. The build maps `node:crypto` to Herdr’s native `crypto` module. The updater verifies the GitHub SHA-256 digest and version header, then uses Herdr's compare-and-replace file API. Keep the bundle within the host's 1 MiB text read limit. Record the background check time before the request so a mod reload cannot immediately retrigger it.
 - `shell.ts` defines the contract between the view and its tabs: `TabView`, `Services`, `CommandHandler` and `RefreshScope`. `main.ts` implements `Services`, `commands.ts` implements `CommandHandler`, and each tab module implements `TabView`. `overlay.ts` hosts the single active dialog drawn over the whole view.
 - Tabs reach each other only through `Services` (`setTab`, `revealCommit`, `openCommitDiff`, `commands()`) or the tab methods `commands.ts` calls. A tab never imports another tab's module, except `commands.ts` for the operations it routes.
 - `context.ts` reads Herdr's focused terminal and machine. `main.ts` uses it to bind every asynchronous read and mutation.

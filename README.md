@@ -22,6 +22,8 @@ Read ~/.config/herdr-app/AGENTS.md, then add this mod: github.com/JeHwanYoo/herd
 
 Focus a terminal in a Git repository and press ⌘G to open Git on the right of the tab. Press ⌘G again to close it.
 
+Git checks GitHub Releases for updates while its pane is open. Open **Settings → Versions** to check on demand and install a newer release. Update checks use `curl`.
+
 ## Features
 
 <table>

@@ -13,7 +13,7 @@ Put explanations in pull requests, `RECIPE.md`, or convention documents.
 - `tsconfig.json` runs the compiler in strict mode with `noUncheckedIndexedAccess`, `noImplicitOverride`, and unused-code checks. Fix the code instead of loosening an option.
 - Do not use `any`, non-null assertions (`!`), or `@ts-` directives. Narrow the type with a check. Use type assertions (`as`) only when an external API's type declarations are inaccurate and you have verified the value's type.
 - Import types with `import type` or inline `type` specifiers.
-- Code in `src/` runs in Herdr's QuickJS runtime. Use only `gpui-kit`, `gpui-base`, `herdr`, and the language itself.
+- Code in `src/` runs in Herdr's QuickJS runtime. Use `gpui-kit`, `gpui-base`, `herdr`, and the language itself. Release verification uses the host’s native `crypto` module.
 
 ## Lint and format
 
