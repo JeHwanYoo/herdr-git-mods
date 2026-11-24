@@ -1,4 +1,4 @@
-// Herdr Git Mods v0.1.0
+// Herdr Git Mods v0.2.0
 
 // src/main.ts
 import { v_flex as v_flex23 } from "gpui-base";
@@ -5735,7 +5735,7 @@ import { Button as Button3, h_flex as h_flex12, v_flex as v_flex11 } from "gpui-
 import { div as div12 } from "gpui-kit";
 
 // src/version.ts
-var VERSION = "0.1.0";
+var VERSION = "0.2.0";
 var BUNDLE_ASSET = "main.js";
 var BUNDLE_LIMIT = 1024 * 1024;
 function bundleHeader(version) {
