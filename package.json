@@ -22,14 +22,12 @@
     "link": "bun run build && bun run check-mod && bun scripts/link.ts",
     "unlink": "bun scripts/link.ts --remove",
     "check": "bun run lint && bun run check-comments && bun run typecheck && bun test && bun run build && bun run check-mod",
-    "ci": "biome ci && bun run check-comments && bun run typecheck:tests && bun test && bun run build:check",
-    "performance": "bun tests/performances/container.ts"
+    "ci": "biome ci && bun run check-comments && bun run typecheck:tests && bun test && bun run build:check"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.4",
     "@types/bun": "1.4.4",
     "oxc-parser": "0.154.0",
-    "testcontainers": "^12.2.1",
     "typescript": "7.0.2"
   }
 }
