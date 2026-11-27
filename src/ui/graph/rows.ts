@@ -15,14 +15,17 @@ export function graphViewWidth(width: number): number {
   return Math.min(Math.max(Math.floor((width * 2) / 5), MIN_GRAPH_WIDTH), Math.max(0, width - 1));
 }
 
-function badgeStyle(kind: CommitRefKind, t: Palette): { icon?: IconName; symbol?: string; bg: Color } {
-  const styles: Record<CommitRefKind, { icon?: IconName; symbol?: string; bg: Color }> = {
-    head: { symbol: "●", bg: t.badgeHead },
-    local: { icon: "branch", bg: t.badgeLocal },
-    remote: { icon: "remote", bg: t.badgeRemote },
-    "remote-head": { icon: "remote", bg: t.badgeRemoteHead },
-    tag: { icon: "tag", bg: t.badgeTag },
-    other: { symbol: "◆", bg: t.badgeOther },
+function badgeStyle(
+  kind: CommitRefKind,
+  t: Palette,
+): { icon?: IconName; symbol?: string; bg: Color; border: Color; color: Color } {
+  const styles: Record<CommitRefKind, { icon?: IconName; symbol?: string; bg: Color; border: Color; color: Color }> = {
+    head: { symbol: "●", bg: t.badgeHead, border: t.badgeHeadBorder, color: t.error },
+    local: { icon: "branch", bg: t.badgeLocal, border: t.badgeLocalBorder, color: t.success },
+    remote: { icon: "remote", bg: t.badgeRemote, border: t.badgeRemoteBorder, color: t.info },
+    "remote-head": { icon: "remote", bg: t.badgeRemoteHead, border: t.badgeRemoteHeadBorder, color: t.azure },
+    tag: { icon: "tag", bg: t.badgeTag, border: t.badgeTagBorder, color: t.warning },
+    other: { symbol: "◆", bg: t.badgeOther, border: t.badgeOtherBorder, color: t.accentText },
   };
   return styles[kind];
 }
@@ -33,7 +36,7 @@ function badgeSpans(references: readonly CommitRef[], width: number, t: Palette)
   for (const reference of references) {
     const separator = spans.length ? 1 : 0;
     const available = remaining - separator;
-    const { icon, symbol, bg } = badgeStyle(reference.kind, t);
+    const { icon, symbol, bg, border, color } = badgeStyle(reference.kind, t);
     const fixed = (icon ? ICON_CELLS : 1) + 3;
     if (available <= fixed) break;
     const name = truncateToWidth(reference.name, available - fixed);
@@ -42,8 +45,8 @@ function badgeSpans(references: readonly CommitRef[], width: number, t: Palette)
       spans.push({ text: " " });
       remaining -= 1;
     }
-    if (icon) spans.push({ text: " ", bg }, { text: ` ${name} `, icon, bg });
-    else spans.push({ text: ` ${symbol} ${name} `, bg });
+    if (icon) spans.push({ text: ` ${name} `, icon, bg, border, color });
+    else spans.push({ text: ` ${symbol} ${name} `, bg, border, color });
     remaining -= badgeWidth;
   }
   if (spans.length) spans.push({ text: " " });
@@ -115,7 +118,7 @@ export function commitDetail(look: Look, commit: Commit, text: CommitText): Elem
   const author = truncateToWidth(commit.authorName, Math.max(0, textWidth - displayWidth(sha) - 2));
   return line(
     look,
-    [{ text: sha, color: look.t.accent }],
+    [{ text: sha, color: look.t.accentText }],
     author ? { text: author, color: look.t.secondary } : null,
     false,
   );

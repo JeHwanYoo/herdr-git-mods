@@ -475,9 +475,12 @@ export class Inspect {
       );
     const change = line.change;
     if (change === undefined) return row;
+    const active = this.focus === "details" && this.selected === change;
     return row
-      .when(this.focus === "details" && this.selected === change, (el) => el.bg(look.t.focus).font_weight(700))
-      .hover((style) => style.bg(look.t.hover))
+      .border_l(2)
+      .border_color(active ? look.t.accent : "#00000000")
+      .when(active, (el) => el.bg(look.t.accentSoft).font_weight(600))
+      .hover((style) => style.bg(active ? look.t.accentSoft : look.t.hover))
       .on_click((_, cx) => {
         cx.stop_propagation();
         this.toggle(change, cx);
@@ -523,15 +526,19 @@ export class Inspect {
   }
 
   renderPreview(look: Look, size: { cols: number; rows: number }, onFocus: (cx: Context) => void): Element {
+    const { t } = look;
     const close = h_flex()
       .id("git-commit-preview-close")
       .absolute()
-      .top(0)
-      .right(look.cell * 1)
+      .top(4)
+      .right(8)
       .h(look.row)
-      .text_color(look.t.hint)
-      .hover((style) => style.bg(look.t.hover))
-      .child("[×]")
+      .px(6)
+      .items_center()
+      .rounded(2)
+      .text_color(t.hint)
+      .hover((style) => style.bg(t.accentSoft).text_color(t.text))
+      .child("×")
       .on_click((_, cx) => {
         cx.stop_propagation();
         this.closePreview();

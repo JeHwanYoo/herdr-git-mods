@@ -163,14 +163,34 @@ export class CommitDialog extends Dialog {
     toggle: (cx: Context) => void,
   ): Element {
     const { t } = look;
-    return div()
+    const focused = this.focus === focus;
+    return h_flex()
       .id(id)
       .flex_none()
-      .h(look.row)
+      .h(look.row + 6)
+      .px(6)
+      .gap(8)
+      .items_center()
       .cursor_pointer()
-      .when(this.focus === focus, (el) => el.bg(t.focus).font_weight(700))
-      .hover((style) => style.bg(t.hover))
-      .child(`[${on ? "x" : " "}] ${label}`)
+      .rounded(2)
+      .when(focused, (el) => el.bg(t.accentSoft).font_weight(600))
+      .hover((style) => style.bg(focused ? t.accentSoft : t.hover))
+      .child(
+        h_flex()
+          .flex_none()
+          .w(16)
+          .h(16)
+          .items_center()
+          .justify_center()
+          .rounded(2)
+          .border(1)
+          .border_color(on ? t.accent : t.lineStrong)
+          .bg(on ? t.accent : t.background)
+          .text_color(t.textInverse)
+          .font_weight(700)
+          .child(on ? "✓" : ""),
+      )
+      .child(div().text_color(t.text).child(label))
       .on_click((_, cx) => {
         cx.stop_propagation();
         toggle(cx);

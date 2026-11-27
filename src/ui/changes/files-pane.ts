@@ -11,7 +11,7 @@ import {
 import type { ChangeSection, DiffSummary, WorkingChange } from "../../git/comparison.ts";
 import type { StagingOperation } from "../../git/staging.ts";
 import { type Color, cols, GLYPH, type Look, type Palette, statusColor } from "../theme.ts";
-import { box, countedTitle, displayWidth, isChord, scrollbar, spinner, viewportOffset } from "../widgets.ts";
+import { box, countedTitle, displayWidth, isChord, kbd, scrollbar, spinner, viewportOffset } from "../widgets.ts";
 import { type TreeRow, treeRows } from "./tree.ts";
 
 export interface FilesHost {
@@ -409,7 +409,14 @@ export class FilesPane {
     const cells: Element[] = [];
     if (discard)
       cells.push(
-        div().flex_none().w(cols(look, OVERLAY)).bg(t.warning).text_color(t.textInverse).font_weight(700).child(" ↶ "),
+        div()
+          .flex_none()
+          .w(cols(look, OVERLAY))
+          .bg(t.warning)
+          .text_color(t.textInverse)
+          .rounded(2)
+          .font_weight(700)
+          .child(" ↶ "),
       );
     cells.push(
       div()
@@ -417,10 +424,17 @@ export class FilesPane {
         .w(cols(look, OVERLAY))
         .bg(stages ? t.success : t.warning)
         .text_color(t.textInverse)
+        .rounded(2)
         .font_weight(700)
         .child(stages ? " + " : " - "),
     );
     return cells;
+  }
+
+  private rowBackground(t: Palette, focusedRow: boolean, hovered: boolean, selectedRow: boolean): Color | null {
+    if (focusedRow) return t.accentSoft;
+    if (hovered) return t.hover;
+    return selectedRow ? t.selection : null;
   }
 
   private rowElement(look: Look, index: number, selection: Set<string>, owner: string | null): Element {
@@ -432,7 +446,7 @@ export class FilesPane {
     const focusedRow = index === this.selected;
     const selectedRow = row.kind === "file" && selection.has(key);
     const hovered = index === this.hovered;
-    const background = focusedRow ? t.focus : hovered ? t.hover : selectedRow ? t.selection : null;
+    const background = this.rowBackground(t, focusedRow, hovered, selectedRow);
     const spans = sliceSpans(this.line(look, row), this.horizontal, Math.max(1, this.width - 2));
     const element = h_flex()
       .flex_none()
@@ -440,12 +454,15 @@ export class FilesPane {
       .min_w(0)
       .overflow_hidden()
       .whitespace_nowrap()
+      .border_l(2)
+      .border_color(focusedRow ? t.accent : "#00000000")
       .when(!!background, (el) => el.bg(background ?? t.background))
-      .when(focusedRow || selectedRow, (el) => el.font_weight(700))
+      .when(focusedRow || selectedRow, (el) => el.font_weight(600))
       .child(
         div()
           .flex_none()
           .w(cols(look, 2))
+          .text_color(focusedRow ? t.accentText : t.hint)
           .child(focusedRow ? GLYPH.marker : ""),
       )
       .child(
@@ -487,8 +504,15 @@ export class FilesPane {
     const text = selection.size ? `${counted} · Selected ${selection.size}` : counted;
     const title = options.hints
       ? h_flex()
-          .child(div().text_color(t.accent).font_weight(700).child("O"))
-          .child(` Find Files${text.slice("Files".length)}`)
+          .items_center()
+          .gap(6)
+          .child(kbd(look, "O", true))
+          .child(
+            div()
+              .text_size(Math.max(10, look.size - 2))
+              .font_weight(600)
+              .child(`FIND FILES${text.slice("Files".length).toUpperCase()}`),
+          )
       : text;
     const list = v_flex().flex_1().min_w(0).min_h(0).overflow_hidden();
     const end = Math.min(this.rows.length, this.scroll + Math.max(1, this.height));

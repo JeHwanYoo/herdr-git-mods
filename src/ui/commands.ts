@@ -155,10 +155,11 @@ export class Commands implements CommandHandler, CommandHost {
   quickActionState(action: QuickAction): QuickActionState {
     const id = QUICK[action];
     const busy = this.services.busy();
+    const context = this.context();
     return {
-      enabled:
-        action === "stash" ? this.services.repository()?.state === "ready" : unavailable(id, this.context()) === null,
+      enabled: action === "stash" ? this.services.repository()?.state === "ready" : unavailable(id, context) === null,
       running: busy && this.running === id ? progressLabel(id) : null,
+      primary: action === "commit" && context.staged,
     };
   }
 

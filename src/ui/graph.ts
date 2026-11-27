@@ -38,12 +38,14 @@ import { cols, DIALOG, type Look, rows } from "./theme.ts";
 import { type ActionCell, box, filterBar, isChord, scrollbar, spinner } from "./widgets.ts";
 import type { WorkspacesBox } from "./workspaces.ts";
 
-const GRAPH_ACTIONS: readonly (Pick<ActionCell, "label" | "shortcut" | "icon" | "symbol"> & { id: GraphAction })[] = [
+const GRAPH_ACTIONS: readonly (Pick<ActionCell, "label" | "shortcut" | "icon" | "symbol" | "variant"> & {
+  id: GraphAction;
+})[] = [
   { id: "checkout", label: "Checkout", shortcut: "x", icon: "checkout" },
   { id: "rebase", label: "Rebase", shortcut: "r", icon: "rebase" },
   { id: "cherry-pick", label: "Cherry-pick", shortcut: "y", icon: "cherryPick" },
-  { id: "revert", label: "Revert", shortcut: "v", icon: "revert" },
-  { id: "reset", label: "Reset", shortcut: "t", icon: "reset" },
+  { id: "revert", label: "Revert", shortcut: "v", icon: "revert", variant: "danger" },
+  { id: "reset", label: "Reset", shortcut: "t", icon: "reset", variant: "danger" },
   { id: "copy-sha", label: "Copy SHA", shortcut: "h", icon: "copy" },
 ];
 
@@ -762,16 +764,24 @@ export class GraphTab implements TabView {
   }
 
   private footer(look: Look): Element | null {
+    const { t } = look;
     const text = this.historyError ? "Refresh to retry" : this.state.hasMore ? "[PgDn] Load more" : "";
     if (!text) return null;
-    return div()
+    return h_flex()
       .id("git-graph-load-more")
       .absolute()
-      .bottom(0)
-      .left(look.cell)
-      .h(look.row)
-      .bg(look.t.background)
-      .text_color(look.t.hint)
+      .bottom(4)
+      .right(12)
+      .h(look.row + 2)
+      .px(8)
+      .items_center()
+      .bg(t.hover)
+      .border(1)
+      .border_color(t.lineStrong)
+      .rounded(2)
+      .text_size(Math.max(10, look.size - 2))
+      .text_color(this.historyError ? t.error : t.accentText)
+      .hover((style) => style.bg(t.accentSoft).border_color(t.accent))
       .whitespace_nowrap()
       .child(text)
       .on_click((_, cx) => {
@@ -803,7 +813,7 @@ export class GraphTab implements TabView {
       total: this.graphWidth,
       first,
       selected,
-      background: selected ? t.selection : t.background,
+      background: selected ? t.panelFocus : t.panel,
     };
     const element = h_flex()
       .id(`git-commit-row-${row}`)
@@ -811,7 +821,9 @@ export class GraphTab implements TabView {
       .h(rows(look, ROW_HEIGHT))
       .min_w(0)
       .overflow_hidden()
-      .when(selected, (el) => el.bg(t.selection))
+      .border_l(2)
+      .border_color(selected ? t.accent : "#00000000")
+      .when(selected, (el) => el.bg(t.accentSoft))
       .when(!selected, (el) => el.hover((style) => style.bg(t.hover)))
       .on_click((_, cx) => {
         cx.stop_propagation();
@@ -909,6 +921,7 @@ export class GraphTab implements TabView {
     const row = h_flex()
       .h(rows(look, height))
       .flex_none()
+      .gap(6)
       .child(this.workspaces.render(look).w(cols(look, first)).flex_none().h_full());
     if (!preview) return row.child(this.inspect.renderDetails(look, onFocus).flex_1().h_full());
     return row
@@ -917,17 +930,18 @@ export class GraphTab implements TabView {
   }
 
   render(look: Look, size: BodySize): Element {
-    const available = Math.max(0, size.rows - 3);
+    const available = Math.max(0, size.rows - 2);
     const listRows = Math.round((available * 58) / 100);
     return v_flex()
       .id("git-graph")
       .size_full()
       .min_h(0)
       .min_w(0)
+      .gap(6)
       .track_focus(this.handle)
       .on_key_down((event, cx) => this.key(event, cx))
       .child(filterBar(look, { id: "git-graph-filter", input: this.filter, active: this.filtering }))
       .child(this.commitsBox(look).h(rows(look, listRows)).flex_none())
-      .child(this.lower(look, { cols: size.cols, rows: available - listRows }));
+      .child(this.lower(look, { cols: size.cols, rows: available - listRows }).flex_1());
   }
 }

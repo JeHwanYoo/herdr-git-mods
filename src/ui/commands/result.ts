@@ -1,7 +1,7 @@
 import { Button, h_flex, v_flex } from "gpui-base";
 import { type AsyncContext, div, type Element } from "gpui-kit";
 import type { CustomSpec, Overlay } from "../overlay.ts";
-import { DIALOG, type Look, rows } from "../theme.ts";
+import { DIALOG, type Look } from "../theme.ts";
 
 const VISIBLE_MS = 2000;
 const CHROME = 6;
@@ -27,15 +27,19 @@ function closeButton(look: Look, overlay: Overlay): Element {
   return Button.new("git-result-close")
     .accessibility_label("Close")
     .w_full()
-    .h(rows(look, 3))
+    .h(look.row + 10)
     .child(
       h_flex()
         .size_full()
         .justify_center()
         .items_center()
+        .bg(t.accent)
         .border(1)
-        .border_color(t.rule)
-        .hover((style) => style.bg(t.hover))
+        .border_color(t.accent)
+        .rounded(2)
+        .text_color(t.textInverse)
+        .font_weight(600)
+        .hover((style) => style.bg(t.accentStrong).border_color(t.accentStrong))
         .child("[Enter] Close"),
     )
     .on_click((_, cx) => {

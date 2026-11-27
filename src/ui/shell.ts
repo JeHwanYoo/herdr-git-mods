@@ -54,6 +54,7 @@ export interface TabView {
 export interface QuickActionState {
   enabled: boolean;
   running: string | null;
+  primary?: boolean;
 }
 
 export interface CommandHandler {
@@ -231,7 +232,16 @@ export class Shell {
   private tabsRow(look: Look): Element {
     const { t } = look;
     const active = this.host.active().id;
-    const row = h_flex().flex_none().h(look.row).items_center().whitespace_nowrap();
+    const row = h_flex()
+      .flex_none()
+      .w_full()
+      .px(8)
+      .gap(2)
+      .items_center()
+      .bg(t.panel)
+      .border_b(1)
+      .border_color(t.rule)
+      .whitespace_nowrap();
     const entries: { id: string; label: string; shortcut: string; active: boolean; onClick: (cx: Context) => void }[] =
       [
         ...TAB_ORDER.slice(0, 3).map((tab) => ({
@@ -254,25 +264,22 @@ export class Shell {
           onClick: (cx: Context) => this.host.setTab("settings", cx),
         },
       ];
-    for (const [index, entry] of entries.entries()) {
-      if (index > 0)
-        row.child(
-          div()
-            .flex_none()
-            .w(look.cell * 2),
-        );
-      row.child(tabLabel(look, entry, this.hints));
-    }
+    for (const entry of entries) row.child(tabLabel(look, entry, this.hints));
     return row.child(div().flex_1()).child(
       Button.new("git-version")
         .accessibility_label(`Herdr Git Mods ${VERSION}`)
         .flex_none()
-        .h(look.row)
+        .h(look.row + 2)
+        .px(8)
         .items_center()
-        .bg(t.inert)
+        .bg(t.hover)
+        .border(1)
+        .border_color(t.rule)
+        .rounded(2)
+        .text_size(Math.max(10, look.size - 2))
         .text_color(t.hint)
-        .hover((style) => style.bg(t.hover))
-        .child(` v${VERSION} `)
+        .hover((style) => style.bg(t.accentSoft).border_color(t.accent).text_color(t.accentText))
+        .child(`v${VERSION}`)
         .on_click((_, cx) => {
           cx.stop_propagation();
           this.host.setTab("settings", cx);
@@ -290,6 +297,7 @@ export class Shell {
         return {
           ...action,
           id: `git-quick-${action.id}`,
+          variant: state.primary ? "primary" : "secondary",
           enabled: state.enabled,
           running: state.running,
           onClick: (cx: Context) => commands.quickAction(action.id, cx),
@@ -301,27 +309,26 @@ export class Shell {
 
   header(look: Look): Element {
     const tab = this.host.active();
-    const blank = () => div().flex_none().h(look.row);
-    const header = v_flex()
-      .flex_none()
-      .w_full()
-      .child(this.tabsRow(look))
-      .child(blank())
-      .child(this.quickActions(look))
-      .child(blank())
-      .child(tab.toolbar ? actionBar(look, tab.toolbar(look, this.hints), this.hints) : blank());
+    const controls = v_flex().flex_none().w_full().px(6).pt(6).gap(6).child(this.quickActions(look));
+    if (tab.toolbar) controls.child(actionBar(look, tab.toolbar(look, this.hints), this.hints));
     if (tab.info) {
       const info = tab.info(look);
-      header.child(blank()).child(
-        h_flex()
-          .flex_none()
-          .h(look.row)
-          .overflow_hidden()
-          .whitespace_nowrap()
-          .child(info ?? div()),
-      );
+      if (info)
+        controls.child(
+          h_flex()
+            .flex_none()
+            .h(look.row + 2)
+            .px(8)
+            .items_center()
+            .bg(look.t.panel)
+            .border(1)
+            .border_color(look.t.rule)
+            .overflow_hidden()
+            .whitespace_nowrap()
+            .child(info),
+        );
     }
-    return header.child(blank());
+    return v_flex().flex_none().w_full().child(this.tabsRow(look)).child(controls);
   }
 
   private branchLine(look: Look, line: StatusLine): Element[] {
@@ -339,7 +346,7 @@ export class Shell {
       const budget = Math.max(0, Math.max(40, this.statusCols) - 2 - (8 + displayWidth(suffix)));
       return [
         div().text_color(t.hint).child("Branch: "),
-        div().text_color(t.accent).font_weight(700).child(truncateToWidth(branch, budget)),
+        div().text_color(t.accentText).font_weight(600).child(truncateToWidth(branch, budget)),
         div().text_color(t.hint).child(suffix),
       ];
     }
@@ -368,35 +375,44 @@ export class Shell {
 
   statusBar(look: Look, line: StatusLine): Element {
     const { t } = look;
-    const separator = ` ${GLYPH.rule} `;
+    const separator = () => div().flex_none().text_color(t.rule).child(` ${GLYPH.rule} `);
     const content = h_flex()
       .flex_none()
       .h(look.row)
       .items_center()
       .whitespace_nowrap()
       .ml(-this.statusScroll * look.cell)
-      .child(" ")
       .children(this.branchLine(look, line))
-      .child(div().text_color(t.text).child(`${separator}${line.path}${separator}`))
+      .child(separator())
+      .child(div().text_color(t.secondary).child(line.path))
+      .child(separator())
       .when(line.status.blame == null, (el) =>
-        el.child(iconCell(look, line.facts.github ? "github" : "local")).child(" "),
+        el.child(iconCell(look, line.facts.github ? "github" : "local", t.hint)).child(" "),
       )
       .child(
         div()
-          .text_color(t.text)
+          .text_color(t.secondary)
           .child(line.status.blame ?? identityText(line.facts)),
       );
     const progress = line.progress ?? line.status.progress;
-    if (progress) content.child(separator).child(spinner(look)).child(` ${progress}`);
+    if (progress)
+      content
+        .child(separator())
+        .child(spinner(look))
+        .child(div().text_color(t.accentText).child(` ${progress}`));
     const error = line.status.error ?? line.error;
-    if (error) content.child(separator).child(div().text_color(t.error).child(`Error: ${error}`));
+    if (error) content.child(separator()).child(div().text_color(t.error).child(`Error: ${error}`));
     return h_flex()
       .id("git-status-bar")
       .flex_none()
       .w_full()
-      .h(look.row)
+      .h(look.row + 8)
+      .px(8)
+      .items_center()
       .overflow_hidden()
-      .bg(t.inert)
+      .bg(t.panel)
+      .border_t(1)
+      .border_color(t.rule)
       .text_color(t.text)
       .on_size_change((size, cx) => {
         const columns = Math.floor(size.width / look.screenCell);
@@ -405,6 +421,6 @@ export class Shell {
         cx.notify();
       })
       .on_scroll_wheel((event, cx) => this.scrollStatus(event, look, cx))
-      .child(content.child(" "));
+      .child(content);
   }
 }
