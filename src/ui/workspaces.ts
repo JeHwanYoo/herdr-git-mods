@@ -611,6 +611,7 @@ export class WorkspacesBox {
       .right(0)
       .top(rowsPx(look, top - this.scroll))
       .h(look.row)
+      .px(4)
       .flex()
       .items_center()
       .child(child);

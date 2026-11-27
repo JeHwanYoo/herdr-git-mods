@@ -293,7 +293,7 @@ export class Overlay {
         h_flex()
           .flex_none()
           .h(look.row + 4)
-          .px(4)
+          .pl(2)
           .items_center()
           .bg(t.background)
           .border_b(1)

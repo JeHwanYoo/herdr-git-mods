@@ -1,8 +1,8 @@
 // Herdr Git Mods v0.2.0
 
 // src/main.ts
-import { v_flex as v_flex23 } from "gpui-base";
-import { div as div27, View } from "gpui-kit";
+import { v_flex as v_flex24 } from "gpui-base";
+import { div as div28, View } from "gpui-kit";
 import { exec as exec6, nextCommand, watchFolder } from "herdr";
 
 // src/git/read-sharing.ts
@@ -1183,7 +1183,7 @@ function kbd(look, key, active = false) {
 function sectionLabel(look, text, options) {
   const { t } = look;
   const muted = options?.muted ?? false;
-  return h_flex().flex_1().min_w(0).items_center().gap(6).whitespace_nowrap().child(div2().flex_none().w(6).h(6).rounded_full().bg(muted ? t.lineStrong : t.accent)).child(div2().flex_none().text_size(Math.max(10, look.size - 2)).font_weight(600).text_color(muted ? t.hint : t.secondary).child(text.toUpperCase())).when(!!options?.rule, (el) => el.child(div2().flex_1().h(1).bg(t.rule)));
+  return h_flex().flex_1().min_w(0).items_center().gap(8).whitespace_nowrap().child(div2().flex_none().w(6).h(6).rounded_full().bg(muted ? t.lineStrong : t.accent)).child(div2().flex_none().text_size(Math.max(10, look.size - 2)).font_weight(600).text_color(muted ? t.hint : t.secondary).child(text.toUpperCase())).when(!!options?.rule, (el) => el.child(div2().flex_1().h(1).bg(t.rule)));
 }
 function box(look, options, body) {
   const { t } = look;
@@ -5057,8 +5057,8 @@ async function commitSubject(git, sha) {
 }
 
 // src/ui/commands/branch.ts
-import { h_flex as h_flex10, v_flex as v_flex9 } from "gpui-base";
-import { div as div10 } from "gpui-kit";
+import { h_flex as h_flex10, v_flex as v_flex10 } from "gpui-base";
+import { div as div11 } from "gpui-kit";
 
 // src/git/ref-operations.ts
 async function must2(git, args) {
@@ -5274,7 +5274,8 @@ var RESET_MODES = [
 ];
 
 // src/ui/commands/dialog.ts
-import { h_flex as h_flex9, InputState as InputState2 } from "gpui-base";
+import { h_flex as h_flex9, InputState as InputState2, v_flex as v_flex9 } from "gpui-base";
+import { div as div10 } from "gpui-kit";
 class Dialog {
   overlay;
   handle;
@@ -5333,7 +5334,8 @@ class Dialog {
   }
 }
 function inputBox(look, id, title, input, focused = false) {
-  return box(look, { id, title, focused }, h_flex9().h(look.row).child(textInput(look, input))).flex_none();
+  const { t } = look;
+  return v_flex9().id(id).flex_none().gap(4).child(div10().text_size(Math.max(10, look.size - 2)).font_weight(600).text_color(focused ? t.accentText : t.secondary).child(title.toUpperCase())).child(h_flex9().h(look.row + 8).px(8).items_center().bg(t.background).border(1).border_color(focused ? t.accent : t.lineStrong).rounded(2).child(textInput(look, input)));
 }
 
 // src/ui/commands/host.ts
@@ -5593,7 +5595,7 @@ class BranchManager extends Dialog {
   statusLines(look) {
     const { t } = look;
     const lines = [];
-    const line = (text, color) => lines.push(div10().whitespace_normal().text_color(color).child(text));
+    const line = (text, color) => lines.push(div11().whitespace_normal().text_color(color).child(text));
     if (this.loading)
       line("Loading branches", t.hint);
     if (this.readError)
@@ -5617,37 +5619,37 @@ class BranchManager extends Dialog {
     const flag = branch.current ? " *" : branch.worktree ? " Worktree" : "";
     const commit = branch.commit.slice(0, 8);
     const nameWidth = Math.max(1, width - 2 - (kind.length + commit.length + flag.length + 2));
-    return h_flex10().child(div10().text_color(local ? t.accent : t.secondary).child(kind)).child(div10().child(" ")).child(div10().text_color(t.text).child(truncateToWidth(branchName(branch.reference), nameWidth))).child(div10().child(" ")).child(div10().text_color(t.hint).child(commit)).when(!!flag, (el) => el.child(div10().text_color(branch.current ? t.accent : t.warning).when(branch.current, (el) => el.font_weight(700)).child(flag)));
+    return h_flex10().child(div11().text_color(local ? t.accent : t.secondary).child(kind)).child(div11().child(" ")).child(div11().text_color(t.text).child(truncateToWidth(branchName(branch.reference), nameWidth))).child(div11().child(" ")).child(div11().text_color(t.hint).child(commit)).when(!!flag, (el) => el.child(div11().text_color(branch.current ? t.accent : t.warning).when(branch.current, (el) => el.font_weight(700)).child(flag)));
   }
   listBody(look) {
     const rowsList = this.rows();
     const buttons = h_flex10().flex_none().gap(look.cell);
     for (const action of ACTIONS) {
       const enabled = this.allowed(action.id) === null;
-      buttons.child(div10().id(`git-branches-${action.id}`).flex_1().min_w(0).h(rows(look, 3)).flex().items_center().justify_center().border(1).border_color(look.t.rule).text_color(enabled ? look.t.text : look.t.muted).truncate().when(enabled, (el) => el.cursor_pointer().hover((style) => style.bg(look.t.hover))).child(action.label).on_click((_, cx) => {
+      buttons.child(div11().id(`git-branches-${action.id}`).flex_1().min_w(0).h(rows(look, 3)).flex().items_center().justify_center().border(1).border_color(look.t.rule).text_color(enabled ? look.t.text : look.t.muted).truncate().when(enabled, (el) => el.cursor_pointer().hover((style) => style.bg(look.t.hover))).child(action.label).on_click((_, cx) => {
         cx.stop_propagation();
         this.act(action.id, cx);
         cx.notify();
       }));
     }
-    return v_flex9().size_full().child(inputBox(look, "git-branches-search", "Search", this.query, true)).child(v_flex9().flex_1().min_h(0).child(this.list.render(look, {
+    return v_flex10().size_full().child(inputBox(look, "git-branches-search", "Search", this.query, true)).child(v_flex10().flex_1().min_h(0).child(this.list.render(look, {
       length: rowsList.length,
       focused: true,
       marker: true,
       row: ({ index }) => {
         const branch = rowsList[index];
-        return branch ? this.branchRow(look, branch, DIALOG.wide - 4) : div10();
+        return branch ? this.branchRow(look, branch, DIALOG.wide - 4) : div11();
       },
       onSelect: (index) => {
         this.list.selected = index;
       }
-    }))).child(v_flex9().flex_none().max_h(rows(look, 6)).overflow_hidden().children(this.statusLines(look))).child(buttons);
+    }))).child(v_flex10().flex_none().max_h(rows(look, 6)).overflow_hidden().children(this.statusLines(look))).child(buttons);
   }
   formBody(look, state) {
     const { t } = look;
     const busy = this.mutating();
-    const details = v_flex9().flex_1().min_h(0).overflow_hidden();
-    const line = (text, color) => details.child(div10().whitespace_normal().text_color(color).child(text));
+    const details = v_flex10().flex_1().min_h(0).overflow_hidden();
+    const line = (text, color) => details.child(div11().whitespace_normal().text_color(color).child(text));
     if (busy)
       line("Applying branch change", t.hint);
     if (state.kind === "rename" && this.renameError) {
@@ -5669,7 +5671,7 @@ class BranchManager extends Dialog {
     line(state.branch.commit, t.text);
     const repository = this.host.services.repository();
     line(repository?.state === "ready" ? repository.root : "", t.text);
-    return v_flex9().size_full().when(state.kind === "rename", (el) => el.child(state.kind === "rename" ? inputBox(look, "git-branch-name", "New name", state.input, true) : div10())).child(details).child(dialogFooter(look, {
+    return v_flex10().size_full().when(state.kind === "rename", (el) => el.child(state.kind === "rename" ? inputBox(look, "git-branch-name", "New name", state.input, true) : div11())).child(details).child(dialogFooter(look, {
       id: "git-branch-submit",
       label: state.kind === "rename" ? "[Enter] Save" : "[Enter] Delete",
       enabled: !busy,
@@ -5678,13 +5680,13 @@ class BranchManager extends Dialog {
   }
   body(look) {
     const state = this.state;
-    return v_flex9().size_full().min_h(rows(look, 16)).child(state.kind === "list" ? this.listBody(look) : this.formBody(look, state));
+    return v_flex10().size_full().min_h(rows(look, 16)).child(state.kind === "list" ? this.listBody(look) : this.formBody(look, state));
   }
 }
 
 // src/ui/commands/commit.ts
-import { h_flex as h_flex11, Textarea, TextareaState, v_flex as v_flex10 } from "gpui-base";
-import { div as div11 } from "gpui-kit";
+import { h_flex as h_flex11, Textarea, TextareaState, v_flex as v_flex11 } from "gpui-base";
+import { div as div12 } from "gpui-kit";
 var CYCLE = ["subject", "description", "amend", "submit", "cancel"];
 function splitMessage(message) {
   const index = message.indexOf(`
@@ -5833,7 +5835,7 @@ ${description}` : subject;
   check(look, id, label, on, focus, toggle) {
     const { t } = look;
     const focused = this.focus === focus;
-    return h_flex11().id(id).flex_none().h(look.row + 6).px(6).gap(8).items_center().cursor_pointer().rounded(2).when(focused, (el) => el.bg(t.accentSoft).font_weight(600)).hover((style) => style.bg(focused ? t.accentSoft : t.hover)).child(h_flex11().flex_none().w(16).h(16).items_center().justify_center().rounded(2).border(1).border_color(on ? t.accent : t.lineStrong).bg(on ? t.accent : t.background).text_color(t.textInverse).font_weight(700).child(on ? "✓" : "")).child(div11().text_color(t.text).child(label)).on_click((_, cx) => {
+    return h_flex11().id(id).flex_none().h(look.row + 6).px(6).gap(8).items_center().cursor_pointer().rounded(2).when(focused, (el) => el.bg(t.accentSoft).font_weight(600)).hover((style) => style.bg(focused ? t.accentSoft : t.hover)).child(h_flex11().flex_none().w(16).h(16).items_center().justify_center().rounded(2).border(1).border_color(on ? t.accent : t.lineStrong).bg(on ? t.accent : t.background).text_color(t.textInverse).font_weight(700).child(on ? "✓" : "")).child(div12().text_color(t.text).child(label)).on_click((_, cx) => {
       cx.stop_propagation();
       toggle(cx);
       cx.notify();
@@ -5842,14 +5844,14 @@ ${description}` : subject;
   status(look) {
     const { t } = look;
     if (this.error)
-      return div11().h(look.row).truncate().text_color(t.error).child(`Error: ${this.error}`);
+      return div12().h(look.row).truncate().text_color(t.error).child(`Error: ${this.error}`);
     if (this.progress)
       return footerHint(look, this.progress);
-    return div11().h(look.row);
+    return div12().h(look.row);
   }
   body(look) {
     const { t } = look;
-    return v_flex10().size_full().min_h(rows(look, 14)).child(inputBox(look, "git-commit-subject", "Subject", this.subject, this.focus === "subject")).child(box(look, { id: "git-commit-description", title: "Description", focused: this.focus === "description" }, h_flex11().size_full().child(Textarea.new(this.description).size_full().text_color(t.text))).flex_1().min_h(rows(look, 5))).child(this.check(look, "git-commit-amend", "Amend", this.amend, "amend", (cx) => this.toggleAmend(cx))).child(this.status(look)).child(dialogFooter(look, {
+    return v_flex11().size_full().min_h(rows(look, 14)).child(inputBox(look, "git-commit-subject", "Subject", this.subject, this.focus === "subject")).child(box(look, { id: "git-commit-description", title: "Description", focused: this.focus === "description" }, h_flex11().size_full().child(Textarea.new(this.description).size_full().text_color(t.text))).flex_1().min_h(rows(look, 5))).child(this.check(look, "git-commit-amend", "Amend", this.amend, "amend", (cx) => this.toggleAmend(cx))).child(this.status(look)).child(dialogFooter(look, {
       id: "git-commit-submit",
       label: "[Enter] Commit",
       focused: this.focus === "submit",
@@ -5864,12 +5866,12 @@ ${description}` : subject;
 }
 
 // src/ui/commands/confirm.ts
-import { v_flex as v_flex12 } from "gpui-base";
-import { div as div13 } from "gpui-kit";
+import { v_flex as v_flex13 } from "gpui-base";
+import { div as div14 } from "gpui-kit";
 
 // src/ui/shell.ts
-import { Button as Button3, h_flex as h_flex12, v_flex as v_flex11 } from "gpui-base";
-import { div as div12 } from "gpui-kit";
+import { Button as Button3, h_flex as h_flex12, v_flex as v_flex12 } from "gpui-base";
+import { div as div13 } from "gpui-kit";
 
 // src/version.ts
 var VERSION = "0.2.0";
@@ -5993,7 +5995,7 @@ class Shell {
   tabsRow(look) {
     const { t } = look;
     const active = this.host.active().id;
-    const row = h_flex12().flex_none().w_full().px(8).gap(2).items_center().bg(t.panel).border_b(1).border_color(t.rule).whitespace_nowrap();
+    const row = h_flex12().flex_none().w_full().px(6).gap(2).items_center().bg(t.panel).border_b(1).border_color(t.rule).whitespace_nowrap();
     const entries = [
       ...TAB_ORDER.slice(0, 3).map((tab) => ({
         id: `git-tab-${tab}`,
@@ -6017,7 +6019,7 @@ class Shell {
     ];
     for (const entry of entries)
       row.child(tabLabel(look, entry, this.hints));
-    return row.child(div12().flex_1()).child(Button3.new("git-version").accessibility_label(`Herdr Git Mods ${VERSION}`).flex_none().h(look.row + 2).px(8).items_center().bg(t.hover).border(1).border_color(t.rule).rounded(2).text_size(Math.max(10, look.size - 2)).text_color(t.hint).hover((style) => style.bg(t.accentSoft).border_color(t.accent).text_color(t.accentText)).child(`v${VERSION}`).on_click((_, cx) => {
+    return row.child(div13().flex_1()).child(Button3.new("git-version").accessibility_label(`Herdr Git Mods ${VERSION}`).flex_none().h(look.row + 2).px(8).items_center().bg(t.hover).border(1).border_color(t.rule).rounded(2).text_size(Math.max(10, look.size - 2)).text_color(t.hint).hover((style) => style.bg(t.accentSoft).border_color(t.accent).text_color(t.accentText)).child(`v${VERSION}`).on_click((_, cx) => {
       cx.stop_propagation();
       this.host.setTab("settings", cx);
       cx.notify();
@@ -6039,7 +6041,7 @@ class Shell {
   }
   header(look) {
     const tab = this.host.active();
-    const controls = v_flex11().flex_none().w_full().px(6).pt(6).gap(6).child(this.quickActions(look));
+    const controls = v_flex12().flex_none().w_full().px(6).pt(6).gap(6).child(this.quickActions(look));
     if (tab.toolbar)
       controls.child(actionBar(look, tab.toolbar(look, this.hints), this.hints));
     if (tab.info) {
@@ -6047,13 +6049,13 @@ class Shell {
       if (info)
         controls.child(h_flex12().flex_none().h(look.row + 2).px(8).items_center().bg(look.t.panel).border(1).border_color(look.t.rule).overflow_hidden().whitespace_nowrap().child(info));
     }
-    return v_flex11().flex_none().w_full().child(this.tabsRow(look)).child(controls);
+    return v_flex12().flex_none().w_full().child(this.tabsRow(look)).child(controls);
   }
   branchLine(look, line) {
     const { t } = look;
     const repository = line.repository;
     if (repository?.state !== "ready")
-      return [div12().text_color(t.hint).child("No repository")];
+      return [div13().text_color(t.hint).child("No repository")];
     const head = line.facts.head;
     const selected = line.graph && this.statusCols >= SELECTED_MIN_COLS && line.status.selected && line.status.selected !== head ? ` · Selected: ${shortCommit(line.status.selected)}` : "";
     const branch = repository.branch.name;
@@ -6061,17 +6063,17 @@ class Shell {
       const suffix = `${head ? ` · HEAD ${shortCommit(head)}` : " · Uncommitted"}${selected}`;
       const budget = Math.max(0, Math.max(40, this.statusCols) - 2 - (8 + displayWidth(suffix)));
       return [
-        div12().text_color(t.hint).child("Branch: "),
-        div12().text_color(t.accentText).font_weight(600).child(truncateToWidth(branch, budget)),
-        div12().text_color(t.hint).child(suffix)
+        div13().text_color(t.hint).child("Branch: "),
+        div13().text_color(t.accentText).font_weight(600).child(truncateToWidth(branch, budget)),
+        div13().text_color(t.hint).child(suffix)
       ];
     }
     if (head)
       return [
-        div12().text_color(t.warning).child(`Detached HEAD: ${shortCommit(head)}`),
-        div12().text_color(t.hint).child(selected)
+        div13().text_color(t.warning).child(`Detached HEAD: ${shortCommit(head)}`),
+        div13().text_color(t.hint).child(selected)
       ];
-    return [div12().text_color(t.hint).child("Uncommitted")];
+    return [div13().text_color(t.hint).child("Uncommitted")];
   }
   scrollStatus(event, look, cx) {
     const horizontal = Math.abs(event.delta.x) > Math.abs(event.delta.y) ? event.delta.x : event.delta.y;
@@ -6086,14 +6088,14 @@ class Shell {
   }
   statusBar(look, line) {
     const { t } = look;
-    const separator = () => div12().flex_none().text_color(t.rule).child(` ${GLYPH.rule} `);
-    const content = h_flex12().flex_none().h(look.row).items_center().whitespace_nowrap().ml(-this.statusScroll * look.cell).children(this.branchLine(look, line)).child(separator()).child(div12().text_color(t.secondary).child(line.path)).child(separator()).when(line.status.blame == null, (el) => el.child(iconCell(look, line.facts.github ? "github" : "local", t.hint)).child(" ")).child(div12().text_color(t.secondary).child(line.status.blame ?? identityText(line.facts)));
+    const separator = () => div13().flex_none().text_color(t.rule).child(` ${GLYPH.rule} `);
+    const content = h_flex12().flex_none().h(look.row).items_center().whitespace_nowrap().ml(-this.statusScroll * look.cell).children(this.branchLine(look, line)).child(separator()).child(div13().text_color(t.secondary).child(line.path)).child(separator()).when(line.status.blame == null, (el) => el.child(iconCell(look, line.facts.github ? "github" : "local", t.hint)).child(" ")).child(div13().text_color(t.secondary).child(line.status.blame ?? identityText(line.facts)));
     const progress = line.progress ?? line.status.progress;
     if (progress)
-      content.child(separator()).child(spinner(look)).child(div12().text_color(t.accentText).child(` ${progress}`));
+      content.child(separator()).child(spinner(look)).child(div13().text_color(t.accentText).child(` ${progress}`));
     const error = line.status.error ?? line.error;
     if (error)
-      content.child(separator()).child(div12().text_color(t.error).child(`Error: ${error}`));
+      content.child(separator()).child(div13().text_color(t.error).child(`Error: ${error}`));
     return h_flex12().id("git-status-bar").flex_none().w_full().h(look.row + 8).px(8).items_center().overflow_hidden().bg(t.panel).border_t(1).border_color(t.rule).text_color(t.text).on_size_change((size, cx) => {
       const columns = Math.floor(size.width / look.screenCell);
       if (columns === this.statusCols)
@@ -6271,10 +6273,10 @@ class PushConfirm {
   render(look) {
     const { t } = look;
     const fallback = this.host.context().remotes[0] === this.operation.remote ? " (default)" : "";
-    return v_flex12().min_w(0).child(div13().whitespace_normal().child(describe(this.operation, this.details))).child(div13().h(look.row)).child(div13().id("git-push-remote").h(look.row).text_color(t.hint).cursor_pointer().child(`Remote: ${this.operation.remote}${fallback}  [←/→] Change`).on_click((_, cx) => {
+    return v_flex13().min_w(0).child(div14().whitespace_normal().child(describe(this.operation, this.details))).child(div14().h(look.row)).child(div14().id("git-push-remote").h(look.row).text_color(t.hint).cursor_pointer().child(`Remote: ${this.operation.remote}${fallback}  [←/→] Change`).on_click((_, cx) => {
       this.cycle(1);
       cx.notify();
-    })).child(div13().id("git-push-force").h(look.row).text_color(this.operation.force ? t.warning : t.hint).cursor_pointer().child(`[${this.operation.force ? "x" : " "}] Force with lease  [Space]`).on_click((_, cx) => {
+    })).child(div14().id("git-push-force").h(look.row).text_color(this.operation.force ? t.warning : t.hint).cursor_pointer().child(`[${this.operation.force ? "x" : " "}] Force with lease  [Space]`).on_click((_, cx) => {
       this.operation.force = !this.operation.force;
       cx.notify();
     })).child(footerHint(look, TITLES.push)).child(dialogFooter(look, { id: "git-push-run", label: "[Enter] Run", onClick: (cx) => this.submit(cx) }, { id: "git-push-cancel", label: "[Esc] Cancel", onClick: (cx) => this.host.services.overlay.close(cx) }));
@@ -6282,8 +6284,8 @@ class PushConfirm {
 }
 
 // src/ui/commands/rebase.ts
-import { h_flex as h_flex13, Textarea as Textarea2, TextareaState as TextareaState2, v_flex as v_flex13 } from "gpui-base";
-import { div as div14 } from "gpui-kit";
+import { h_flex as h_flex13, Textarea as Textarea2, TextareaState as TextareaState2, v_flex as v_flex14 } from "gpui-base";
+import { div as div15 } from "gpui-kit";
 
 // src/git/rebase.ts
 var REBASE_ACTIONS = ["pick", "edit", "reword", "squash", "fixup", "drop"];
@@ -6747,17 +6749,17 @@ class RebaseEditor extends Dialog {
     const { t } = look;
     const [first, last] = this.range();
     const visual = this.anchor !== null;
-    const cell = (width, text, color = t.text) => div14().flex_none().w(width * look.cell).truncate().text_color(color).child(text);
-    const header = h_flex13().h(look.row).pl(2 * look.cell).text_color(t.accent).font_weight(700).child(cell(9, "Action", t.accent)).child(div14().flex_1().child("Commit")).child(cell(18, "Author", t.accent)).child(cell(8, "SHA", t.accent)).child(cell(10, "Date", t.accent));
-    return v_flex13().flex_1().min_h(0).child(header).child(v_flex13().flex_1().min_h(0).child(this.list.render(look, {
+    const cell = (width, text, color = t.text) => div15().flex_none().w(width * look.cell).truncate().text_color(color).child(text);
+    const header = h_flex13().h(look.row).pl(2 * look.cell).text_color(t.accent).font_weight(700).child(cell(9, "Action", t.accent)).child(div15().flex_1().child("Commit")).child(cell(18, "Author", t.accent)).child(cell(8, "SHA", t.accent)).child(cell(10, "Date", t.accent));
+    return v_flex14().flex_1().min_h(0).child(header).child(v_flex14().flex_1().min_h(0).child(this.list.render(look, {
       length: plan.entries.length,
       focused: !visual,
       marker: true,
       row: ({ index }) => {
         const entry = plan.entries[index];
         if (!entry)
-          return div14();
-        return h_flex13().flex_1().min_w(0).when(visual && index >= first && index <= last, (el) => el.bg(t.selection)).child(cell(9, REBASE_LABELS[entry.action], this.actionColor(look, entry.action))).child(div14().flex_1().min_w(0).truncate().child(entry.message.split(`
+          return div15();
+        return h_flex13().flex_1().min_w(0).when(visual && index >= first && index <= last, (el) => el.bg(t.selection)).child(cell(9, REBASE_LABELS[entry.action], this.actionColor(look, entry.action))).child(div15().flex_1().min_w(0).truncate().child(entry.message.split(`
 `)[0] ?? "")).child(cell(18, entry.author)).child(cell(8, entry.sha.slice(0, 8))).child(cell(10, entry.date));
       },
       onActivate: (index) => {
@@ -6771,8 +6773,8 @@ class RebaseEditor extends Dialog {
     const row = h_flex13().h(look.row);
     REBASE_ACTIONS.forEach((action, index) => {
       if (index)
-        row.child(div14().child("  "));
-      row.child(div14().text_color(look.t.hint).child(`${KEYS[index]} `)).child(div14().text_color(this.actionColor(look, action)).child(REBASE_LABELS[action]));
+        row.child(div15().child("  "));
+      row.child(div15().text_color(look.t.hint).child(`${KEYS[index]} `)).child(div15().text_color(this.actionColor(look, action)).child(REBASE_LABELS[action]));
     });
     return row;
   }
@@ -6780,10 +6782,10 @@ class RebaseEditor extends Dialog {
     const { t } = look;
     const [first, last] = this.range();
     if (this.status)
-      return div14().h(look.row).truncate().text_color(t.warning).child(this.status);
+      return div15().h(look.row).truncate().text_color(t.warning).child(this.status);
     if (this.anchor !== null)
-      return div14().h(look.row).text_color(t.accent).child(`Visual: ${last - first + 1} commits · p/e/s/f/d set all · Ctrl+↑/↓ move the block · Esc clear`);
-    return div14().h(look.row).text_color(t.hint).child("v select lines · Ctrl+↑/↓ move commit · ? what the keys do");
+      return div15().h(look.row).text_color(t.accent).child(`Visual: ${last - first + 1} commits · p/e/s/f/d set all · Ctrl+↑/↓ move the block · Esc clear`);
+    return div15().h(look.row).text_color(t.hint).child("v select lines · Ctrl+↑/↓ move commit · ? what the keys do");
   }
   recovery(look) {
     const row = h_flex13().h(look.row);
@@ -6793,7 +6795,7 @@ class RebaseEditor extends Dialog {
       ["a", "[a] Abort"],
       ["m", "[m] Amend message"]
     ])
-      row.child(div14().id(`git-rebase-${key}`).flex_1().text_color(look.t.accent).cursor_pointer().child(label).on_click((_, cx) => {
+      row.child(div15().id(`git-rebase-${key}`).flex_1().text_color(look.t.accent).cursor_pointer().child(label).on_click((_, cx) => {
         this.recover(key, cx);
         cx.notify();
       }));
@@ -6806,7 +6808,7 @@ class RebaseEditor extends Dialog {
       const text = task.kind === "start" ? `Rewrite ${task.plan.entries.length} commits on ${task.plan.branch}?
 Target: ${task.plan.target}
 Update dependent branches: ${task.plan.updateRefs}` : task.kind === "skip" ? "Skip the current commit and continue?" : "Abort rebase and restore the original branch?";
-      return box(look, { id: "git-rebase-confirm", title: "Confirm interactive rebase" }, v_flex13().size_full().child(div14().flex_1().whitespace_normal().child(text)).child(dialogFooter(look, { id: "git-rebase-confirm-run", label: "[Enter] Confirm", onClick: (cx) => this.submit(task, cx) }, {
+      return box(look, { id: "git-rebase-confirm", title: "Confirm interactive rebase" }, v_flex14().size_full().child(div15().flex_1().whitespace_normal().child(text)).child(dialogFooter(look, { id: "git-rebase-confirm-run", label: "[Enter] Confirm", onClick: (cx) => this.submit(task, cx) }, {
         id: "git-rebase-confirm-back",
         label: "[Esc] Back",
         onClick: () => {
@@ -6816,7 +6818,7 @@ Update dependent branches: ${task.plan.updateRefs}` : task.kind === "skip" ? "Sk
     }
     const message = this.message;
     if (message)
-      return box(look, { id: "git-rebase-message", title: "Commit message", focused: true }, v_flex13().size_full().child(Textarea2.new(message.state).flex_1().text_color(t.text)).child(div14().h(rows(look, 2)).text_color(message.error ? t.error : t.hint).child(message.error ?? "Enter saves · Shift+Enter new line · Ctrl+U clears · paste supported")).child(dialogFooter(look, { id: "git-rebase-message-save", label: "[Enter] Save", onClick: (cx) => this.messageKey("enter", cx) }, { id: "git-rebase-message-cancel", label: "[Esc] Cancel", onClick: () => this.closeMessage() }))).h(rows(look, 20));
+      return box(look, { id: "git-rebase-message", title: "Commit message", focused: true }, v_flex14().size_full().child(Textarea2.new(message.state).flex_1().text_color(t.text)).child(div15().h(rows(look, 2)).text_color(message.error ? t.error : t.hint).child(message.error ?? "Enter saves · Shift+Enter new line · Ctrl+U clears · paste supported")).child(dialogFooter(look, { id: "git-rebase-message-save", label: "[Enter] Save", onClick: (cx) => this.messageKey("enter", cx) }, { id: "git-rebase-message-cancel", label: "[Esc] Cancel", onClick: () => this.closeMessage() }))).h(rows(look, 20));
     return this.menuPanel(look);
   }
   menuPanel(look) {
@@ -6826,54 +6828,54 @@ Update dependent branches: ${task.plan.updateRefs}` : task.kind === "skip" ? "Sk
     const { t } = look;
     const [first, last] = this.range();
     const title = last > first ? `Actions for ${last - first + 1} commits` : "Actions";
-    return box(look, { id: "git-rebase-menu-box", title }, v_flex13().size_full().child(v_flex13().flex_1().min_h(0).child(menu.render(look, {
+    return box(look, { id: "git-rebase-menu-box", title }, v_flex14().size_full().child(v_flex14().flex_1().min_h(0).child(menu.render(look, {
       length: MENU_ROWS,
       focused: true,
       marker: true,
       row: ({ index }) => {
         const action = REBASE_ACTIONS[index];
         if (!action)
-          return h_flex13().child(div14().text_color(t.accent).child(index === 6 ? "Ctrl+↑  " : "Ctrl+↓  ")).child(div14().child(index === 6 ? "Move up" : "Move down"));
-        return h_flex13().child(div14().text_color(t.accent).child(`${KEYS[index]}  `)).child(div14().text_color(this.actionColor(look, action)).child(padToWidth(REBASE_LABELS[action], 8))).child(div14().child(REBASE_DESCRIPTIONS[action]));
+          return h_flex13().child(div15().text_color(t.accent).child(index === 6 ? "Ctrl+↑  " : "Ctrl+↓  ")).child(div15().child(index === 6 ? "Move up" : "Move down"));
+        return h_flex13().child(div15().text_color(t.accent).child(`${KEYS[index]}  `)).child(div15().text_color(this.actionColor(look, action)).child(padToWidth(REBASE_LABELS[action], 8))).child(div15().child(REBASE_DESCRIPTIONS[action]));
       },
       onActivate: (index) => this.choose(index)
-    }))).child(div14().h(look.row).text_color(t.hint).child("Press the key itself on the list, or pick a row here · Esc closes"))).h(rows(look, 12));
+    }))).child(div15().h(look.row).text_color(t.hint).child("Press the key itself on the list, or pick a row here · Esc closes"))).h(rows(look, 12));
   }
   body(look) {
     const { t } = look;
     const plan = this.plan;
-    const content = v_flex13().flex_1().min_h(0);
+    const content = v_flex14().flex_1().min_h(0);
     if (plan) {
-      content.child(div14().h(look.row).child(`Rebase: ${plan.branch}`)).child(div14().h(look.row).child(`On: ${truncateToWidth(plan.target, WIDTH - 8)}`)).child(div14().id("git-rebase-update-refs").h(look.row).text_color(t.hint).cursor_pointer().child(`[${plan.updateRefs ? "x" : " "}] Update dependent branches  [Space]`).on_click((_, cx) => {
+      content.child(div15().h(look.row).child(`Rebase: ${plan.branch}`)).child(div15().h(look.row).child(`On: ${truncateToWidth(plan.target, WIDTH - 8)}`)).child(div15().id("git-rebase-update-refs").h(look.row).text_color(t.hint).cursor_pointer().child(`[${plan.updateRefs ? "x" : " "}] Update dependent branches  [Space]`).on_click((_, cx) => {
         plan.updateRefs = !plan.updateRefs;
         cx.notify();
       }));
       if (plan.active)
-        content.child(div14().flex_1().min_h(0).whitespace_normal().overflow_hidden().child(this.status)).child(this.recovery(look));
+        content.child(div15().flex_1().min_h(0).whitespace_normal().overflow_hidden().child(this.status)).child(this.recovery(look));
       else
         content.child(this.table(look, plan));
     }
-    const footer = v_flex13().flex_none().h(rows(look, 2));
+    const footer = v_flex14().flex_none().h(rows(look, 2));
     if (this.busy)
-      footer.child(div14().h(look.row).text_color(t.hint).child(`⠋ ${this.status}`));
+      footer.child(div15().h(look.row).text_color(t.hint).child(`⠋ ${this.status}`));
     else if (!plan)
-      footer.child(div14().text_color(t.error).child(this.status));
+      footer.child(div15().text_color(t.error).child(this.status));
     else if (!plan.active)
       footer.child(this.actionKeys(look)).child(this.guidance(look));
     const active = !!plan?.active;
     const layer = this.overlayPanel(look);
-    return v_flex13().relative().size_full().min_h(rows(look, 24)).child(content).child(footer).child(dialogFooter(look, {
+    return v_flex14().relative().size_full().min_h(rows(look, 24)).child(content).child(footer).child(dialogFooter(look, {
       id: "git-rebase-primary",
       label: active ? "Resolve / stage in Changes" : "[Enter] Rebase",
       enabled: !active,
       onClick: () => this.start()
-    }, { id: "git-rebase-close", label: "[Esc] Close", onClick: (cx) => this.close(cx) })).when(layer !== null, (el) => el.child(v_flex13().absolute().inset_0().items_center().justify_center().child(div14().w(76 * look.cell).bg(t.background).child(layer ?? div14()))));
+    }, { id: "git-rebase-close", label: "[Esc] Close", onClick: (cx) => this.close(cx) })).when(layer !== null, (el) => el.child(v_flex14().absolute().inset_0().items_center().justify_center().child(div15().w(76 * look.cell).bg(t.background).child(layer ?? div15()))));
   }
 }
 
 // src/ui/commands/remote.ts
-import { v_flex as v_flex14 } from "gpui-base";
-import { div as div15 } from "gpui-kit";
+import { v_flex as v_flex15 } from "gpui-base";
+import { div as div16 } from "gpui-kit";
 
 // src/git/remotes.ts
 async function must4(git, args) {
@@ -6987,18 +6989,18 @@ class RemoteList extends Dialog {
   }
   content(look) {
     if (this.loading)
-      return div15().text_color(look.t.hint).child("Loading remotes");
+      return div16().text_color(look.t.hint).child("Loading remotes");
     if (this.error)
-      return div15().text_color(look.t.error).child(`Error: ${this.error}`);
+      return div16().text_color(look.t.error).child(`Error: ${this.error}`);
     if (!this.remotes.length)
-      return div15().child("No remotes configured.");
+      return div16().child("No remotes configured.");
     return this.list.render(look, {
       length: this.remotes.length,
       focused: true,
       marker: true,
       row: ({ index }) => {
         const remote = this.remotes[index];
-        return div15().truncate().child(remote ? `${remote.name}${index === 0 ? " (default)" : ""}  ${remote.url}` : "");
+        return div16().truncate().child(remote ? `${remote.name}${index === 0 ? " (default)" : ""}  ${remote.url}` : "");
       },
       onSelect: (index) => {
         this.list.selected = index;
@@ -7007,13 +7009,13 @@ class RemoteList extends Dialog {
   }
   body(look) {
     const selected = this.remotes[this.list.selected];
-    return v_flex14().size_full().min_h(rows(look, 7)).child(v_flex14().flex_1().min_h(0).child(this.content(look))).child(v_flex14().flex_none().h(rows(look, 2)).text_color(look.t.hint).when(!!selected, (el) => el.child(div15().truncate().child(`Push URL: ${selected?.pushUrl ?? ""}`)).child(div15().child("[j/k] Select")))).child(dialogFooter(look, { id: "git-remotes-remove", label: "[Del] Remove", onClick: (cx) => this.remove(cx) }, { id: "git-remotes-close", label: "[Esc] Close", onClick: (cx) => this.close(cx) }));
+    return v_flex15().size_full().min_h(rows(look, 7)).child(v_flex15().flex_1().min_h(0).child(this.content(look))).child(v_flex15().flex_none().h(rows(look, 2)).text_color(look.t.hint).when(!!selected, (el) => el.child(div16().truncate().child(`Push URL: ${selected?.pushUrl ?? ""}`)).child(div16().child("[j/k] Select")))).child(dialogFooter(look, { id: "git-remotes-remove", label: "[Del] Remove", onClick: (cx) => this.remove(cx) }, { id: "git-remotes-close", label: "[Esc] Close", onClick: (cx) => this.close(cx) }));
   }
 }
 
 // src/ui/commands/reset.ts
-import { h_flex as h_flex14, v_flex as v_flex15 } from "gpui-base";
-import { div as div16 } from "gpui-kit";
+import { h_flex as h_flex14, v_flex as v_flex16 } from "gpui-base";
+import { div as div17 } from "gpui-kit";
 var EFFECT = {
   soft: "The current branch moves to the target. The index and working tree are preserved.",
   mixed: "The current branch and index move to the target. The working tree is preserved.",
@@ -7089,17 +7091,17 @@ class ResetFlow extends Dialog {
   }
   pair(look, label, ...values) {
     const { t } = look;
-    const row = h_flex14().h(look.row).child(div16().text_color(t.hint).child(label));
+    const row = h_flex14().h(look.row).child(div17().text_color(t.hint).child(label));
     values.forEach((value, index) => {
       if (index > 0)
-        row.child(div16().child(" · "));
-      row.child(div16().text_color(t.accent).font_weight(700).child(value));
+        row.child(div17().child(" · "));
+      row.child(div17().text_color(t.accent).font_weight(700).child(value));
     });
     return row;
   }
   header(look) {
     const { t } = look;
-    const header = v_flex15().flex_none().child(h_flex14().h(look.row).child(div16().text_color(t.hint).child("Current branch  ")).child(div16().text_color(t.accent).font_weight(700).child(this.request.branch)).child(div16().text_color(t.hint).child("    HEAD  ")).child(div16().text_color(t.accent).font_weight(700).child(shortCommit(this.request.head))));
+    const header = v_flex16().flex_none().child(h_flex14().h(look.row).child(div17().text_color(t.hint).child("Current branch  ")).child(div17().text_color(t.accent).font_weight(700).child(this.request.branch)).child(div17().text_color(t.hint).child("    HEAD  ")).child(div17().text_color(t.accent).font_weight(700).child(shortCommit(this.request.head))));
     const { target } = this.request;
     if (this.step === "mode")
       header.child(this.pair(look, "Target  ", shortCommit(target.commit), target.name));
@@ -7112,7 +7114,7 @@ class ResetFlow extends Dialog {
       marker: true,
       row: ({ index }) => {
         const mode = RESET_MODES[index];
-        return div16().child(mode ? `${padToWidth(mode.label, 7)} ${mode.summary}` : "");
+        return div17().child(mode ? `${padToWidth(mode.label, 7)} ${mode.summary}` : "");
       },
       onActivate: (index, cx) => {
         this.modeList.selected = index;
@@ -7123,19 +7125,19 @@ class ResetFlow extends Dialog {
   confirmation(look) {
     const { t } = look;
     const mode = this.mode();
-    const body = v_flex15().min_w(0).child(this.pair(look, "From    ", this.request.branch, shortCommit(this.request.head)));
+    const body = v_flex16().min_w(0).child(this.pair(look, "From    ", this.request.branch, shortCommit(this.request.head)));
     const { target } = this.request;
-    body.child(this.pair(look, "Target  ", target.name, shortCommit(target.commit))).child(this.pair(look, "Mode    ", mode.label)).child(div16().h(look.row)).child(div16().text_color(t.accent).child(`git reset --${mode.mode} ${target.commit}`)).child(div16().h(look.row));
-    body.child(div16().whitespace_normal().text_color(mode.mode === "mixed" ? t.warning : t.text).child(EFFECT[mode.mode]));
+    body.child(this.pair(look, "Target  ", target.name, shortCommit(target.commit))).child(this.pair(look, "Mode    ", mode.label)).child(div17().h(look.row)).child(div17().text_color(t.accent).child(`git reset --${mode.mode} ${target.commit}`)).child(div17().h(look.row));
+    body.child(div17().whitespace_normal().text_color(mode.mode === "mixed" ? t.warning : t.text).child(EFFECT[mode.mode]));
     if (mode.mode === "hard")
-      body.child(div16().whitespace_normal().text_color(t.error).font_weight(700).child(HARD_WARNING));
-    body.child(div16().h(look.row)).child(div16().whitespace_normal().text_color(t.hint).child(REMOTE_NOTE));
+      body.child(div17().whitespace_normal().text_color(t.error).font_weight(700).child(HARD_WARNING));
+    body.child(div17().h(look.row)).child(div17().whitespace_normal().text_color(t.hint).child(REMOTE_NOTE));
     return box(look, { id: "git-reset-confirm-box", title: "Confirm Reset" }, body).flex_1();
   }
   body(look) {
     const content = this.step === "mode" ? this.modes(look) : this.confirmation(look);
     const labels = this.step === "mode" ? ["[Enter] Continue", "[Esc] Cancel"] : ["[Enter] Reset", "[Esc] Back"];
-    return v_flex15().size_full().min_h(rows(look, 10)).child(this.header(look)).child(v_flex15().flex_1().min_h(0).child(content)).child(dialogFooter(look, { id: "git-reset-primary", label: labels[0] ?? "", onClick: (cx) => this.advance(cx) }, { id: "git-reset-secondary", label: labels[1] ?? "", onClick: (cx) => this.back(cx) }));
+    return v_flex16().size_full().min_h(rows(look, 10)).child(this.header(look)).child(v_flex16().flex_1().min_h(0).child(content)).child(dialogFooter(look, { id: "git-reset-primary", label: labels[0] ?? "", onClick: (cx) => this.advance(cx) }, { id: "git-reset-secondary", label: labels[1] ?? "", onClick: (cx) => this.back(cx) }));
   }
 }
 
@@ -7841,15 +7843,15 @@ Resolve conflicts, then use: ${recovery}` : ""}`;
 }
 
 // src/ui/explorer.ts
-import { h_flex as h_flex15, InputState as InputState3, v_flex as v_flex16 } from "gpui-base";
-import { div as div18 } from "gpui-kit";
+import { h_flex as h_flex15, InputState as InputState3, v_flex as v_flex17 } from "gpui-base";
+import { div as div19 } from "gpui-kit";
 
 // src/ui/explorer/image.ts
 import { Buffer } from "buffer";
 import { createHash as createHash2, randomUUID } from "crypto";
 import { mkdir, unlink, writeFile } from "fs/promises";
 import { platform } from "process";
-import { div as div17, image } from "gpui-kit";
+import { div as div18, image } from "gpui-kit";
 import { appHome as appHome3, exec as exec3 } from "herdr";
 var ASSET_FOLDER = "data/git-image-previews";
 var BYTE_LIMIT = 5 * 1024 * 1024;
@@ -7959,7 +7961,7 @@ class ImagePreview {
     }
   }
   render() {
-    const viewport = div17().flex().flex_1().w_full().min_w(0).min_h(0).overflow_hidden();
+    const viewport = div18().flex().flex_1().w_full().min_w(0).min_h(0).overflow_hidden();
     if (this.asset)
       viewport.child(image(this.asset.relative).size_full());
     return viewport;
@@ -8784,7 +8786,7 @@ class FilesTab {
     this.blame.sync(this.services, path && selection ? { file: path, lines: selection.lines, revision: null } : null, cx);
   }
   message(text, color) {
-    return div18().flex_1().min_h(0).text_color(color).whitespace_normal().child(text);
+    return div19().flex_1().min_h(0).text_color(color).whitespace_normal().child(text);
   }
   treeMessage(look) {
     const { t } = look;
@@ -8801,8 +8803,8 @@ class FilesTab {
   treeLine(look, row, status) {
     const { t } = look;
     const indent = "  ".repeat(row.depth);
-    const marker = row.directory ? div18().text_color(t.hint).child(`${indent}${row.expanded ? GLYPH.expanded : GLYPH.collapsed} `) : status ? div18().text_color(statusColor(t, status)).font_weight(700).child(`${indent}${status[0]} `) : div18().child(`${indent}  `);
-    return h_flex15().flex_none().ml(-cols(look, this.horizontal)).child(marker).child(div18().text_color(status ? statusColor(t, status) : t.text).child(row.label));
+    const marker = row.directory ? div19().text_color(t.hint).child(`${indent}${row.expanded ? GLYPH.expanded : GLYPH.collapsed} `) : status ? div19().text_color(statusColor(t, status)).font_weight(700).child(`${indent}${status[0]} `) : div19().child(`${indent}  `);
+    return h_flex15().flex_none().ml(-cols(look, this.horizontal)).child(marker).child(div19().text_color(status ? statusColor(t, status) : t.text).child(row.label));
   }
   maxHorizontal() {
     const width = this.applied() ? Math.max(0, ...this.filter.results.map((result) => displayWidth(resultText(result)))) : Math.max(0, ...this.rows.map((row) => row.depth * 2 + 2 + displayWidth(row.label)));
@@ -8812,7 +8814,7 @@ class FilesTab {
     this.horizontal = Math.max(0, Math.min(this.maxHorizontal(), this.horizontal + delta));
   }
   treeFrame(look, id, title, body) {
-    return box(look, { id, title, focused: this.paneFocused("explorer") }, v_flex16().id(`${id}-body`).flex_1().min_h(0).min_w(0).track_focus(this.treeHandle).on_key_down((event, cx) => this.explorerKey(event, cx)).on_mouse_down("left", (_, cx) => {
+    return box(look, { id, title, focused: this.paneFocused("explorer") }, v_flex17().id(`${id}-body`).flex_1().min_h(0).min_w(0).track_focus(this.treeHandle).on_key_down((event, cx) => this.explorerKey(event, cx)).on_mouse_down("left", (_, cx) => {
       this.setPane("explorer");
       cx.notify();
     }).on_size_change((size, cx) => {
@@ -8844,7 +8846,7 @@ class FilesTab {
       focused: true,
       row: ({ index }) => {
         const row = this.rows[index];
-        return row ? this.treeLine(look, row, statuses.get(row.path)) : div18();
+        return row ? this.treeLine(look, row, statuses.get(row.path)) : div19();
       },
       onSelect: (index, cx) => {
         this.setPane("explorer");
@@ -8875,7 +8877,7 @@ class FilesTab {
       return element.px(4).child(sectionLabel(look, countedTitle(row.label, row.count), { rule: true }));
     const result = this.filter.results[row.index];
     const selected = row.index === this.filter.cursor;
-    return element.border_l(2).border_color(selected ? t.accent : "#00000000").when(selected, (el) => el.bg(t.accentSoft).font_weight(600)).hover((style) => style.bg(selected ? t.accentSoft : t.hover)).child(div18().flex_none().w(cols(look, 2)).text_color(selected ? t.accentText : t.hint).child(selected ? GLYPH.marker : "")).child(h_flex15().ml(-cols(look, this.horizontal)).child(div18().text_color(t.text).child(`  ${result?.path ?? ""}`)).when(result?.line != null, (el) => el.child(div18().text_color(t.hint).child(`:${result?.line}`)))).on_click((_, cx) => {
+    return element.border_l(2).border_color(selected ? t.accent : "#00000000").when(selected, (el) => el.bg(t.accentSoft).font_weight(600)).hover((style) => style.bg(selected ? t.accentSoft : t.hover)).child(div19().flex_none().w(cols(look, 2)).text_color(selected ? t.accentText : t.hint).child(selected ? GLYPH.marker : "")).child(h_flex15().ml(-cols(look, this.horizontal)).child(div19().text_color(t.text).child(`  ${result?.path ?? ""}`)).when(result?.line != null, (el) => el.child(div19().text_color(t.hint).child(`:${result?.line}`)))).on_click((_, cx) => {
       cx.stop_propagation();
       this.setPane("explorer");
       this.filter.cursor = row.index;
@@ -8891,7 +8893,7 @@ class FilesTab {
     if (offset === selectedRow && offset > 0 && all[offset - 1]?.kind === "group")
       offset--;
     filter.scroll = offset;
-    const visible = v_flex16().flex_1().min_w(0).min_h(0).overflow_hidden();
+    const visible = v_flex17().flex_1().min_w(0).min_h(0).overflow_hidden();
     all.slice(offset, offset + filter.height).forEach((row, index) => {
       visible.child(this.resultRow(look, row, offset + index));
     });
@@ -8910,7 +8912,7 @@ class FilesTab {
       this.setPane("explorer");
       this.moveResult(-steps, cx);
       cx.notify();
-    }).child(visible).when(!!bar, (el) => el.child(bar ?? div18()));
+    }).child(visible).when(!!bar, (el) => el.child(bar ?? div19()));
   }
   resultsBox(look) {
     this.horizontal = Math.min(this.horizontal, this.maxHorizontal());
@@ -8924,7 +8926,7 @@ class FilesTab {
     const path = this.previewPath();
     if (selection && path) {
       const name = path.split("/").pop() ?? path;
-      return div18().text_color(look.t.accent).font_weight(700).child(`${name}:${lineNumbersText(selection.lines)}`);
+      return div19().text_color(look.t.accent).font_weight(700).child(`${name}:${lineNumbersText(selection.lines)}`);
     }
     return this.activeFile() ?? "Preview";
   }
@@ -8955,7 +8957,7 @@ class FilesTab {
     });
   }
   previewBox(look) {
-    return box(look, { id: "git-files-preview-box", title: this.previewTitle(look), focused: this.paneFocused("preview") }, v_flex16().id("git-files-preview-body").flex_1().min_h(0).min_w(0).track_focus(this.previewHandle).on_key_down((event, cx) => this.previewKey(event, cx)).on_mouse_down("left", (_, cx) => {
+    return box(look, { id: "git-files-preview-box", title: this.previewTitle(look), focused: this.paneFocused("preview") }, v_flex17().id("git-files-preview-body").flex_1().min_h(0).min_w(0).track_focus(this.previewHandle).on_key_down((event, cx) => this.previewKey(event, cx)).on_mouse_down("left", (_, cx) => {
       this.setPane("preview");
       cx.notify();
     }).child(this.previewBody(look))).flex_1();
@@ -8965,10 +8967,10 @@ class FilesTab {
     if (this.active && this.root !== this.repositoryRoot())
       this.requestFiles(cx);
     this.syncBlame(cx);
-    const left = v_flex16().flex_1().min_h(0).min_w(0).gap(6).child(v_flex16().flex_1().min_h(0).child(this.applied() ? this.resultsBox(look) : this.treeBox(look))).child(v_flex16().flex_1().min_h(0).child(this.workspaces.render(look).flex_1()));
-    const preview = v_flex16().min_h(0).min_w(0).child(this.previewBox(look));
-    const panes = size.wide ? h_flex15().flex_1().min_h(0).gap(6).items_stretch().child(left.flex_none().w(`${35}%`)).child(preview.flex_1().h_full()) : v_flex16().flex_1().min_h(0).gap(6).child(left.h(`${50}%`).flex_none()).child(preview.flex_1());
-    return v_flex16().size_full().min_h(0).min_w(0).gap(6).child(div18().flex_none().on_key_down((event, cx) => this.filterInputKey(event, cx)).on_mouse_down("left", (_, cx) => {
+    const left = v_flex17().flex_1().min_h(0).min_w(0).gap(6).child(v_flex17().flex_1().min_h(0).child(this.applied() ? this.resultsBox(look) : this.treeBox(look))).child(v_flex17().flex_1().min_h(0).child(this.workspaces.render(look).flex_1()));
+    const preview = v_flex17().min_h(0).min_w(0).child(this.previewBox(look));
+    const panes = size.wide ? h_flex15().flex_1().min_h(0).gap(6).items_stretch().child(left.flex_none().w(`${35}%`)).child(preview.flex_1().h_full()) : v_flex17().flex_1().min_h(0).gap(6).child(left.h(`${50}%`).flex_none()).child(preview.flex_1());
+    return v_flex17().size_full().min_h(0).min_w(0).gap(6).child(div19().flex_none().on_key_down((event, cx) => this.filterInputKey(event, cx)).on_mouse_down("left", (_, cx) => {
       this.openFilter();
       cx.notify();
     }).child(filterBar(look, { id: "git-files-filter", input: this.query, active: this.filtering }))).child(panes);
@@ -8979,9 +8981,9 @@ function resultText(result) {
 }
 
 // src/ui/graph.ts
-import { h_flex as h_flex19, InputState as InputState4, v_flex as v_flex19 } from "gpui-base";
+import { h_flex as h_flex19, InputState as InputState4, v_flex as v_flex20 } from "gpui-base";
 import {
-  div as div22
+  div as div23
 } from "gpui-kit";
 
 // src/git/history-maintenance.ts
@@ -9033,8 +9035,8 @@ async function prepareHistory(git) {
 }
 
 // src/ui/graph/inspect.ts
-import { h_flex as h_flex16, v_flex as v_flex17 } from "gpui-base";
-import { div as div19 } from "gpui-kit";
+import { h_flex as h_flex16, v_flex as v_flex18 } from "gpui-base";
+import { div as div20 } from "gpui-kit";
 var DETAILS_CACHE_CAP = 64;
 var PREVIEW_CACHE_CAP = 8;
 var PREVIEW_TITLE_RESERVE = 6;
@@ -9415,7 +9417,7 @@ class Inspect {
     if (this.working)
       return "Uncommitted";
     if (this.error)
-      return div19().text_color(look.t.error).font_weight(700).child(`Commit details failed · ${firstLine(this.error)} · move selection to retry`);
+      return div20().text_color(look.t.error).font_weight(700).child(`Commit details failed · ${firstLine(this.error)} · move selection to retry`);
     return "Commit details";
   }
   followSelection(lines) {
@@ -9444,7 +9446,7 @@ class Inspect {
     const lines = this.lines(t);
     this.scroll = Math.max(0, Math.min(this.scroll, lines.length - this.height));
     this.followSelection(lines);
-    const body = v_flex17().flex_1().min_h(0).min_w(0).overflow_hidden();
+    const body = v_flex18().flex_1().min_h(0).min_w(0).overflow_hidden();
     for (const [offset, line] of lines.slice(this.scroll, this.scroll + Math.max(1, this.height)).entries())
       body.child(this.detailRow(look, line, this.scroll + offset, onFocus));
     return box(look, { id: "git-commit-details", title: this.title(look), focused: this.focus === "details" }, h_flex16().id("git-commit-details-body").flex_1().min_h(0).min_w(0).items_stretch().on_size_change((size, cx) => {
@@ -9456,7 +9458,7 @@ class Inspect {
     }).on_scroll_wheel((event, cx) => this.wheelDetails(event, look, cx)).child(body));
   }
   detailRow(look, line, index, onFocus) {
-    const row = h_flex16().id(`git-commit-detail-${index}`).flex_none().h(look.row).min_w(0).overflow_hidden().whitespace_nowrap().children(spanElements(look, line.spans)).when(line.path !== undefined, (el) => el.child(div19().min_w(0).truncate().child(line.path ?? "")));
+    const row = h_flex16().id(`git-commit-detail-${index}`).flex_none().h(look.row).min_w(0).overflow_hidden().whitespace_nowrap().children(spanElements(look, line.spans)).when(line.path !== undefined, (el) => el.child(div20().min_w(0).truncate().child(line.path ?? "")));
     const change = line.change;
     if (change === undefined)
       return row;
@@ -9471,7 +9473,7 @@ class Inspect {
   previewTitle(look, width) {
     const titleWidth = Math.max(0, width - PREVIEW_TITLE_RESERVE);
     if (this.previewError)
-      return div19().text_color(look.t.error).font_weight(700).child(truncateToWidth(`Preview failed · ${firstLine(this.previewError)} · close and reopen to retry`, titleWidth));
+      return div20().text_color(look.t.error).font_weight(700).child(truncateToWidth(`Preview failed · ${firstLine(this.previewError)} · close and reopen to retry`, titleWidth));
     const shown = this.loadedPath ?? this.previewPath ?? "File";
     const language = this.preview ? this.diff.language() : "";
     const label = language ? `Preview · ${shown} · ${language}` : `Preview · ${shown}`;
@@ -9486,8 +9488,8 @@ class Inspect {
     const pane = (id, title, inner) => box(look, { id, title }, inner).flex_1().min_h(0).min_w(0);
     const binary = this.preview?.binary;
     if (binary)
-      return div19().flex_1().text_color(t.muted).child("Binary file — no text diff");
-    return (vertical ? v_flex17() : h_flex16()).flex_1().min_h(0).min_w(0).items_stretch().child(pane("git-commit-preview-before", "Before", panes.before)).child(pane("git-commit-preview-after", "After", panes.after));
+      return div20().flex_1().text_color(t.muted).child("Binary file — no text diff");
+    return (vertical ? v_flex18() : h_flex16()).flex_1().min_h(0).min_w(0).items_stretch().child(pane("git-commit-preview-before", "Before", panes.before)).child(pane("git-commit-preview-after", "After", panes.after));
   }
   renderPreview(look, size, onFocus) {
     const { t } = look;
@@ -9496,7 +9498,7 @@ class Inspect {
       this.closePreview();
       cx.notify();
     });
-    return box(look, { id: "git-commit-preview", title: this.previewTitle(look, size.cols), focused: this.focus === "preview" }, v_flex17().flex_1().min_h(0).min_w(0).on_mouse_down("left", (_, cx) => {
+    return box(look, { id: "git-commit-preview", title: this.previewTitle(look, size.cols), focused: this.focus === "preview" }, v_flex18().flex_1().min_h(0).min_w(0).on_mouse_down("left", (_, cx) => {
       this.focus = "preview";
       onFocus(cx);
       cx.notify();
@@ -9505,8 +9507,8 @@ class Inspect {
 }
 
 // src/ui/graph/lanes.ts
-import { h_flex as h_flex17, v_flex as v_flex18 } from "gpui-base";
-import { div as div20, PathBuilder as PathBuilder2 } from "gpui-kit";
+import { h_flex as h_flex17, v_flex as v_flex19 } from "gpui-base";
+import { div as div21, PathBuilder as PathBuilder2 } from "gpui-kit";
 
 // src/ui/graph/layout.ts
 var LANE_CELLS = 2;
@@ -9655,7 +9657,7 @@ function glyphLine(look, cells, view, marks) {
   const visible = cells.slice(view.scroll, view.scroll + view.width);
   visible.forEach((cell, index) => {
     const mark = index === 0 ? marks[0] : index === visible.length - 1 ? marks[1] : "";
-    line.child(div20().flex_none().w(look.cell).text_color(mark ? look.t.hint : lane(look.t, cell.color)).child(mark || symbol(cell)));
+    line.child(div21().flex_none().w(look.cell).text_color(mark ? look.t.hint : lane(look.t, cell.color)).child(mark || symbol(cell)));
   });
   return line;
 }
@@ -9666,7 +9668,7 @@ function clipMarks(view) {
 }
 function glyphLanes(look, row, view) {
   const [nodeLine, linkLine] = glyphCells(row, view.total);
-  return v_flex18().flex_none().w(cols(look, view.width)).overflow_hidden().child(glyphLine(look, nodeLine, view, clipMarks(view))).child(glyphLine(look, linkLine, view, ["", ""]));
+  return v_flex19().flex_none().w(cols(look, view.width)).overflow_hidden().child(glyphLine(look, nodeLine, view, clipMarks(view))).child(glyphLine(look, linkLine, view, ["", ""]));
 }
 function strokes(look, row, x) {
   const top = 0;
@@ -9693,10 +9695,10 @@ function strokes(look, row, x) {
     else
       builder.cubic_bezier_to(x(edge.to), bottom, x(edge.from), 1.5 * look.row, x(edge.to), look.row);
   }
-  return [...paths].map(([color, builder]) => div20().absolute().inset_0().child(window.paint_path(builder.build(), lane(look.t, color)).size_full()));
+  return [...paths].map(([color, builder]) => div21().absolute().inset_0().child(window.paint_path(builder.build(), lane(look.t, color)).size_full()));
 }
 function dot(x, y, radius, color) {
-  return div20().absolute().left(x - radius).top(y - radius).w(radius * 2).h(radius * 2).rounded_full().bg(color);
+  return div21().absolute().left(x - radius).top(y - radius).w(radius * 2).h(radius * 2).rounded_full().bg(color);
 }
 function curveLanes(look, row, view) {
   const x = (column) => (laneCell(column) + 0.5 - view.scroll) * look.cell;
@@ -9705,7 +9707,7 @@ function curveLanes(look, row, view) {
   const color = lane(look.t, row.color);
   const center = 0.5 * look.row;
   const node = x(row.column);
-  const element = div20().relative().flex_none().w(cols(look, view.width)).h(ROW_HEIGHT * look.row).overflow_hidden().children(strokes(look, row, x));
+  const element = div21().relative().flex_none().w(cols(look, view.width)).h(ROW_HEIGHT * look.row).overflow_hidden().children(strokes(look, row, x));
   if (view.selected)
     element.child(dot(node, center, radius * 1.6, `${color.slice(0, 7)}46`));
   element.child(dot(node, center, radius, color));
@@ -9713,15 +9715,15 @@ function curveLanes(look, row, view) {
     element.child(dot(node, center, Math.max(0, radius - stroke), view.background));
   const [left, right] = clipMarks(view);
   if (left)
-    element.child(div20().absolute().top(0).left(0).text_color(look.t.hint).child(left));
+    element.child(div21().absolute().top(0).left(0).text_color(look.t.hint).child(left));
   if (right)
-    element.child(div20().absolute().top(0).left(cols(look, view.width - 1)).text_color(look.t.hint).child(right));
+    element.child(div21().absolute().top(0).left(cols(look, view.width - 1)).text_color(look.t.hint).child(right));
   return element;
 }
 
 // src/ui/graph/rows.ts
 import { h_flex as h_flex18 } from "gpui-base";
-import { div as div21 } from "gpui-kit";
+import { div as div22 } from "gpui-kit";
 var TIME_MIN_WIDTH = 56;
 var TIME_WIDTH = 14;
 var MIN_GRAPH_WIDTH = 3;
@@ -9791,7 +9793,7 @@ function titleSpans(look, commit, subjectWidth) {
   ];
 }
 function line(look, left, right, bold) {
-  return h_flex18().h(look.row).min_w(0).flex_1().overflow_hidden().whitespace_nowrap().when(bold, (el) => el.font_weight(700)).child(h_flex18().flex_1().min_w(0).overflow_hidden().children(spanElements(look, left))).when(!!right, (el) => el.children(spanElements(look, right ? [right] : [])).child(div21().flex_none().w(look.cell)));
+  return h_flex18().h(look.row).min_w(0).flex_1().overflow_hidden().whitespace_nowrap().when(bold, (el) => el.font_weight(700)).child(h_flex18().flex_1().min_w(0).overflow_hidden().children(spanElements(look, left))).when(!!right, (el) => el.children(spanElements(look, right ? [right] : [])).child(div22().flex_none().w(look.cell)));
 }
 function commitTitle(look, commit, text) {
   const textWidth = Math.max(0, text.width - text.gutter);
@@ -10466,7 +10468,7 @@ class GraphTab {
     }
     const anchor = this.state.anchor;
     if (anchor)
-      return h_flex19().child(`Commits from ${shortCommit(anchor)} · `).child(div22().id("git-graph-back").text_color(look.t.accent).font_weight(700).child("[Esc] Back to HEAD").on_click((_, cx) => {
+      return h_flex19().child(`Commits from ${shortCommit(anchor)} · `).child(div23().id("git-graph-back").text_color(look.t.accent).font_weight(700).child("[Esc] Back to HEAD").on_click((_, cx) => {
         cx.stop_propagation();
         this.leaveAnchor(cx);
         cx.notify();
@@ -10493,7 +10495,7 @@ class GraphTab {
   }
   lanes(look, row, view) {
     if (!row || view.width <= 0)
-      return div22().flex_none().w(cols(look, view.width));
+      return div23().flex_none().w(cols(look, view.width));
     return this.showGraph() ? curveLanes(look, row, view) : glyphLanes(look, row, view);
   }
   commitRow(look, row, first) {
@@ -10522,10 +10524,10 @@ class GraphTab {
       this.clickRow(row, cx);
       if (this.selected())
         this.services.commands().shortcut("actions", cx);
-    }).child(this.lanes(look, this.state.layout[row], view)).child(div22().flex_none().w(look.cell));
+    }).child(this.lanes(look, this.state.layout[row], view)).child(div23().flex_none().w(look.cell));
     if (!commit)
       return element;
-    return element.child(v_flex19().flex_1().min_w(0).child(commitTitle(look, commit, text)).child(commitDetail(look, commit, text)));
+    return element.child(v_flex20().flex_1().min_w(0).child(commitTitle(look, commit, text)).child(commitDetail(look, commit, text)));
   }
   clickRow(row, cx) {
     this.inspect.focus = null;
@@ -10547,7 +10549,7 @@ class GraphTab {
     this.measureLayout();
     const length = this.displayLen();
     const end = Math.min(length, this.state.scroll + Math.max(1, Math.ceil(this.height / ROW_HEIGHT)));
-    const list = v_flex19().flex_1().min_w(0).min_h(0).overflow_hidden();
+    const list = v_flex20().flex_1().min_w(0).min_h(0).overflow_hidden();
     for (let row = this.state.scroll;row < end; row++)
       list.child(this.commitRow(look, row, row === this.state.scroll));
     const bar = scrollbar(look, {
@@ -10564,7 +10566,7 @@ class GraphTab {
       this.height = height;
       this.width = width;
       cx.notify();
-    }).on_scroll_wheel((event, cx) => this.listWheel(event, look, cx)).child(list).when(!!bar, (el) => el.child(bar ?? div22()));
+    }).on_scroll_wheel((event, cx) => this.listWheel(event, look, cx)).child(list).when(!!bar, (el) => el.child(bar ?? div23()));
   }
   commitsBox(look) {
     const focused = !this.inspect.focus && !this.filtering && !this.workspaces.isFocused();
@@ -10589,13 +10591,13 @@ class GraphTab {
   render(look, size) {
     const available = Math.max(0, size.rows - 2);
     const listRows = Math.round(available * 58 / 100);
-    return v_flex19().id("git-graph").size_full().min_h(0).min_w(0).gap(6).track_focus(this.handle).on_key_down((event, cx) => this.key(event, cx)).child(filterBar(look, { id: "git-graph-filter", input: this.filter, active: this.filtering })).child(this.commitsBox(look).h(rows(look, listRows)).flex_none()).child(this.lower(look, { cols: size.cols, rows: available - listRows }).flex_1());
+    return v_flex20().id("git-graph").size_full().min_h(0).min_w(0).gap(6).track_focus(this.handle).on_key_down((event, cx) => this.key(event, cx)).child(filterBar(look, { id: "git-graph-filter", input: this.filter, active: this.filtering })).child(this.commitsBox(look).h(rows(look, listRows)).flex_none()).child(this.lower(look, { cols: size.cols, rows: available - listRows }).flex_1());
   }
 }
 
 // src/ui/overlay.ts
-import { h_flex as h_flex20, InputState as InputState5, v_flex as v_flex20 } from "gpui-base";
-import { div as div23 } from "gpui-kit";
+import { h_flex as h_flex20, InputState as InputState5, v_flex as v_flex21 } from "gpui-base";
+import { div as div24 } from "gpui-kit";
 var PICKER_ROWS = 20;
 function toneColor(look, tone) {
   const { t } = look;
@@ -10613,7 +10615,7 @@ function toneColor(look, tone) {
 }
 function lineElement(look, line) {
   const value = typeof line === "string" ? { text: line, tone: "text" } : line;
-  return div23().flex_none().min_h(look.row).whitespace_normal().text_color(toneColor(look, value.tone)).when(!!value.bold, (el) => el.font_weight(700)).child(value.text);
+  return div24().flex_none().min_h(look.row).whitespace_normal().text_color(toneColor(look, value.tone)).when(!!value.bold, (el) => el.font_weight(700)).child(value.text);
 }
 function lines2(look, content) {
   const split = [];
@@ -10624,7 +10626,7 @@ function lines2(look, content) {
     else
       split.push(line);
   }
-  return v_flex20().min_w(0).children(split.map((line) => lineElement(look, line)));
+  return v_flex21().min_w(0).children(split.map((line) => lineElement(look, line)));
 }
 
 class Overlay {
@@ -10769,7 +10771,7 @@ class Overlay {
     if (!input)
       return null;
     const { t } = look;
-    return h_flex20().id("git-dialog-search").flex_none().h(look.row + 8).px(8).gap(6).items_center().bg(t.background).border(1).border_color(t.accent).rounded(2).child(div23().flex_none().text_color(t.accentText).font_weight(600).child("/")).child(textInput(look, input));
+    return h_flex20().id("git-dialog-search").flex_none().h(look.row + 8).px(8).gap(6).items_center().bg(t.background).border(1).border_color(t.accent).rounded(2).child(div24().flex_none().text_color(t.accentText).font_weight(600).child("/")).child(textInput(look, input));
   }
   picker(look, spec) {
     const { t } = look;
@@ -10778,36 +10780,36 @@ class Overlay {
     const columns = spec.columns;
     const query = this.query();
     const footer = typeof spec.footer === "function" ? spec.footer(query, all.length) : spec.footer ?? "";
-    const body = v_flex20().min_w(0).gap(6);
+    const body = v_flex21().min_w(0).gap(6);
     const search = this.searchBox(look);
     if (search)
       body.child(search);
     if (columns)
-      body.child(h_flex20().flex_none().h(look.row + 4).px(4).items_center().bg(t.background).border_b(1).border_color(t.rule).text_size(Math.max(10, look.size - 2)).text_color(t.hint).font_weight(600).whitespace_nowrap().child(`  ${padToWidth(columns.label.toUpperCase(), columns.width)}${columns.status.toUpperCase()}`));
-    body.child(v_flex20().h(rows(look, visible)).flex_none().child(this.list.render(look, {
+      body.child(h_flex20().flex_none().h(look.row + 4).pl(2).items_center().bg(t.background).border_b(1).border_color(t.rule).text_size(Math.max(10, look.size - 2)).text_color(t.hint).font_weight(600).whitespace_nowrap().child(`  ${padToWidth(columns.label.toUpperCase(), columns.width)}${columns.status.toUpperCase()}`));
+    body.child(v_flex21().h(rows(look, visible)).flex_none().child(this.list.render(look, {
       length: all.length,
       focused: true,
       row: ({ index }) => {
         const row = all[index];
         if (!row)
-          return div23();
+          return div24();
         const width = columns?.width ?? 0;
-        return h_flex20().flex_1().min_w(0).child(div23().flex_none().when(width > 0, (el) => el.w(cols(look, width))).when(width === 0, (el) => el.flex_1()).truncate().text_color(row.disabled ? t.muted : t.text).child(row.label)).when(!!row.status, (el) => el.child(div23().flex_none().text_color(row.disabled ? t.warning : t.secondary).child(row.status ?? "")));
+        return h_flex20().flex_1().min_w(0).child(div24().flex_none().when(width > 0, (el) => el.w(cols(look, width))).when(width === 0, (el) => el.flex_1()).truncate().text_color(row.disabled ? t.muted : t.text).child(row.label)).when(!!row.status, (el) => el.child(div24().flex_none().text_color(row.disabled ? t.warning : t.secondary).child(row.status ?? "")));
       },
       onActivate: (_, cx) => this.choose(spec, cx)
     })));
     return body.child(this.hint(look, footer)).child(this.footer(look, spec.primary ?? "[Enter] Run", spec.secondary ?? "[Esc] Cancel"));
   }
   confirmBody(look, spec) {
-    return v_flex20().min_w(0).gap(6).child(lines2(look, spec.lines)).child(this.hint(look, spec.hint ?? "")).child(this.footer(look, spec.primary ?? "[Enter] Run", spec.secondary ?? "[Esc] Cancel"));
+    return v_flex21().min_w(0).gap(6).child(lines2(look, spec.lines)).child(this.hint(look, spec.hint ?? "")).child(this.footer(look, spec.primary ?? "[Enter] Run", spec.secondary ?? "[Esc] Cancel"));
   }
   form(look, spec) {
     const { t } = look;
-    const body = v_flex20().min_w(0).gap(6).child(lines2(look, spec.lines ?? []));
+    const body = v_flex21().min_w(0).gap(6).child(lines2(look, spec.lines ?? []));
     for (const [index, field] of spec.fields.entries()) {
       const input = this.inputs[index];
       if (input)
-        body.child(v_flex20().id(`git-dialog-field-${index}`).flex_none().gap(4).child(div23().text_size(Math.max(10, look.size - 2)).font_weight(600).text_color(t.secondary).child(field.label.toUpperCase())).child(h_flex20().h(look.row + 8).px(8).items_center().bg(t.background).border(1).border_color(t.lineStrong).rounded(2).child(textInput(look, input))));
+        body.child(v_flex21().id(`git-dialog-field-${index}`).flex_none().gap(4).child(div24().text_size(Math.max(10, look.size - 2)).font_weight(600).text_color(t.secondary).child(field.label.toUpperCase())).child(h_flex20().h(look.row + 8).px(8).items_center().bg(t.background).border(1).border_color(t.lineStrong).rounded(2).child(textInput(look, input))));
     }
     return body.child(this.hint(look, spec.hint ?? "")).child(this.footer(look, spec.primary ?? "[Enter] Save", spec.secondary ?? "[Esc] Cancel"));
   }
@@ -10818,22 +10820,22 @@ class Overlay {
       return this.confirmBody(look, spec);
     if (spec.kind === "form")
       return this.form(look, spec);
-    return v_flex20().min_w(0).min_h(0).flex_1().when(spec.height !== undefined, (el) => el.h(rows(look, spec.height ?? 0))).child(spec.render(look));
+    return v_flex21().min_w(0).min_h(0).flex_1().when(spec.height !== undefined, (el) => el.h(rows(look, spec.height ?? 0))).child(spec.render(look));
   }
   render(look) {
     const spec = this.spec;
     if (!spec)
       return null;
-    const title = typeof spec.title === "string" ? spec.title : div23().text_size(Math.max(10, look.size - 2)).text_color(toneColor(look, spec.title.tone)).font_weight(600).child(spec.title.text.toUpperCase());
+    const title = typeof spec.title === "string" ? spec.title : div24().text_size(Math.max(10, look.size - 2)).text_color(toneColor(look, spec.title.tone)).font_weight(600).child(spec.title.text.toUpperCase());
     const width = spec.width ?? (spec.kind === "picker" ? DIALOG.wide : DIALOG.medium);
     const frame = dialogFrame(look, { id: "git-dialog", title, width }, this.body(look, spec)).track_focus(this.handle).on_key_down((event, cx) => this.key(event, cx));
-    return v_flex20().id("git-dialog-layer").absolute().inset_0().p(16).bg(look.t.scrim).items_center().justify_center().on_mouse_down("left", (_, cx) => cx.stop_propagation()).child(frame);
+    return v_flex21().id("git-dialog-layer").absolute().inset_0().p(16).bg(look.t.scrim).items_center().justify_center().on_mouse_down("left", (_, cx) => cx.stop_propagation()).child(frame);
   }
 }
 
 // src/ui/settings.ts
-import { h_flex as h_flex21, v_flex as v_flex21 } from "gpui-base";
-import { div as div24 } from "gpui-kit";
+import { h_flex as h_flex21, v_flex as v_flex22 } from "gpui-base";
+import { div as div25 } from "gpui-kit";
 var LABEL_WIDTH = 24;
 var THEME_OPTIONS = [
   { mode: "auto", label: "Auto", description: "Follows Herdr dark or light theme" },
@@ -10845,11 +10847,11 @@ function themeOption(mode) {
 }
 function switchControl(look, on) {
   const { t } = look;
-  return h_flex21().flex_none().items_center().gap(8).child(div24().relative().flex_none().w(36).h(18).rounded_full().bg(on ? t.accent : t.background).border(1).border_color(on ? t.accent : t.lineStrong).child(div24().absolute().top(2).left(on ? 20 : 2).w(12).h(12).rounded_full().bg(on ? t.textInverse : t.secondary))).child(div24().flex_none().w(28).text_size(Math.max(10, look.size - 2)).font_weight(600).text_color(on ? t.accentText : t.hint).child(on ? "ON" : "OFF"));
+  return h_flex21().flex_none().items_center().gap(8).child(div25().relative().flex_none().w(36).h(18).rounded_full().bg(on ? t.accent : t.background).border(1).border_color(on ? t.accent : t.lineStrong).child(div25().absolute().top(2).left(on ? 20 : 2).w(12).h(12).rounded_full().bg(on ? t.textInverse : t.secondary))).child(div25().flex_none().w(28).text_size(Math.max(10, look.size - 2)).font_weight(600).text_color(on ? t.accentText : t.hint).child(on ? "ON" : "OFF"));
 }
 function selectControl(look, text, open) {
   const { t } = look;
-  return h_flex21().flex_none().h(look.row + 4).px(8).gap(8).items_center().bg(open ? t.accentSoft : t.background).border(1).border_color(open ? t.accent : t.lineStrong).rounded(2).text_size(Math.max(10, look.size - 2)).font_weight(600).text_color(t.text).child(text.toUpperCase()).child(div24().text_color(open ? t.accentText : t.hint).child(open ? "▴" : "▾"));
+  return h_flex21().flex_none().h(look.row + 4).px(8).gap(8).items_center().bg(open ? t.accentSoft : t.background).border(1).border_color(open ? t.accent : t.lineStrong).rounded(2).text_size(Math.max(10, look.size - 2)).font_weight(600).text_color(t.text).child(text.toUpperCase()).child(div25().text_color(open ? t.accentText : t.hint).child(open ? "▴" : "▾"));
 }
 function actionControl(look, text) {
   const { t } = look;
@@ -10998,11 +11000,11 @@ class SettingsTab {
   themeDropdown(look) {
     const { t } = look;
     const current = themeMode();
-    const menu = v_flex21().id("git-theme-dropdown").mt(4).bg(t.panel).border(1).border_color(t.lineStrong).rounded(2).shadow_md().overflow_hidden();
+    const menu = v_flex22().id("git-theme-dropdown").mt(4).bg(t.panel).border(1).border_color(t.lineStrong).rounded(2).shadow_md().overflow_hidden();
     for (const [index, option] of THEME_OPTIONS.entries()) {
       const focused = index === this.themeCursor;
       const chosen = option.mode === current;
-      menu.child(h_flex21().id(`git-theme-option-${option.mode}`).h(look.row + 8).px(10).gap(10).items_center().cursor_pointer().border_l(2).border_color(focused ? t.accent : "#00000000").when(index > 0, (el) => el.border_t(1).border_color(t.rule)).when(focused, (el) => el.bg(t.accentSoft)).when(!focused, (el) => el.hover((style) => style.bg(t.hover))).child(div24().flex_none().w(14).text_color(t.accentText).font_weight(700).child(chosen ? "✓" : "")).child(div24().flex_none().w(64).text_size(Math.max(10, look.size - 1)).font_weight(chosen || focused ? 600 : 400).text_color(chosen || focused ? t.accentText : t.text).child(option.label.toUpperCase())).child(div24().flex_1().truncate().text_color(t.secondary).child(option.description)).on_click((_, cx) => {
+      menu.child(h_flex21().id(`git-theme-option-${option.mode}`).h(look.row + 8).px(10).gap(10).items_center().cursor_pointer().border_l(2).border_color(focused ? t.accent : "#00000000").when(index > 0, (el) => el.border_t(1).border_color(t.rule)).when(focused, (el) => el.bg(t.accentSoft)).when(!focused, (el) => el.hover((style) => style.bg(t.hover))).child(div25().flex_none().w(14).text_color(t.accentText).font_weight(700).child(chosen ? "✓" : "")).child(div25().flex_none().w(64).text_size(Math.max(10, look.size - 1)).font_weight(chosen || focused ? 600 : 400).text_color(chosen || focused ? t.accentText : t.text).child(option.label.toUpperCase())).child(div25().flex_1().truncate().text_color(t.secondary).child(option.description)).on_click((_, cx) => {
         cx.stop_propagation();
         this.themeCursor = index;
         this.handle.focus();
@@ -11021,15 +11023,15 @@ class SettingsTab {
   }
   render(look) {
     const { t } = look;
-    const body = v_flex21().p(8).gap(8);
+    const body = v_flex22().p(8).gap(8);
     for (const [index, row] of this.rows().entries()) {
       const active = index === this.selected;
-      const card = v_flex21().id(`git-setting-${row.id}`).p(8).gap(4).border(1).border_l(2).border_color(active ? t.accent : t.rule).when(active, (el) => el.bg(t.accentSoft)).when(!active, (el) => el.bg(t.background).hover((style) => style.bg(t.hover))).on_click((_, cx) => {
+      const card = v_flex22().id(`git-setting-${row.id}`).p(8).gap(4).border(1).border_l(2).border_color(active ? t.accent : t.rule).when(active, (el) => el.bg(t.accentSoft)).when(!active, (el) => el.bg(t.background).hover((style) => style.bg(t.hover))).on_click((_, cx) => {
         this.selected = index;
         this.handle.focus();
         row.activate(cx);
         cx.notify();
-      }).child(h_flex21().h(look.row + 4).items_center().gap(8).whitespace_nowrap().child(div24().font_weight(600).text_color(t.text).child(padToWidth(row.label, LABEL_WIDTH))).child(this.rowControl(look, row)).child(div24().text_color(t.secondary).child(row.status))).child(div24().h(look.row).truncate().text_color(t.hint).child(`${" ".repeat(LABEL_WIDTH)}${row.description}`));
+      }).child(h_flex21().h(look.row + 4).items_center().gap(8).whitespace_nowrap().child(div25().font_weight(600).text_color(t.text).child(padToWidth(row.label, LABEL_WIDTH))).child(this.rowControl(look, row)).child(div25().text_color(t.secondary).child(row.status))).child(div25().h(look.row).truncate().text_color(t.hint).child(`${" ".repeat(LABEL_WIDTH)}${row.description}`));
       if (row.kind === "select" && this.themeOpen)
         card.child(this.themeDropdown(look));
       body.child(card);
@@ -11041,7 +11043,7 @@ class SettingsTab {
 // src/ui/workspaces.ts
 import { Button as Button4, h_flex as h_flex23 } from "gpui-base";
 import {
-  div as div26
+  div as div27
 } from "gpui-kit";
 import { exec as exec5, pickFolder } from "herdr";
 
@@ -11152,8 +11154,8 @@ async function inspectProject(gitAt, root, previous, fresh, repository) {
 }
 
 // src/ui/workspaces/picker.ts
-import { h_flex as h_flex22, v_flex as v_flex22 } from "gpui-base";
-import { div as div25 } from "gpui-kit";
+import { h_flex as h_flex22, v_flex as v_flex23 } from "gpui-base";
+import { div as div26 } from "gpui-kit";
 
 // src/ui/workspaces/rows.ts
 function rowKey2(row) {
@@ -11238,17 +11240,17 @@ function rowElement2(look, row, index) {
   const { t } = look;
   const line = h_flex22().flex_1().min_w(0).overflow_hidden();
   if (index < 9)
-    line.child(div25().text_color(t.hint).child("[")).child(div25().text_color(t.accent).font_weight(700).child(String(index + 1))).child(div25().text_color(t.hint).child("] "));
+    line.child(div26().text_color(t.hint).child("[")).child(div26().text_color(t.accent).font_weight(700).child(String(index + 1))).child(div26().text_color(t.hint).child("] "));
   else
-    line.child(div25().child("    "));
+    line.child(div26().child("    "));
   if (!row)
     return line;
   const name = pathLabel(row.path);
   if (row.kind.type === "current")
-    return line.child(div25().truncate().child(`Current · ${name}`));
+    return line.child(div26().truncate().child(`Current · ${name}`));
   if (row.kind.type === "worktree")
     line.child("  ");
-  return line.items_center().child(iconCell(look, row.kind.type === "project" ? "repository" : "worktree")).child(div25().truncate().child(` ${name}`));
+  return line.items_center().child(iconCell(look, row.kind.type === "project" ? "repository" : "worktree")).child(div26().truncate().child(` ${name}`));
 }
 function openWorkspacePicker(overlay, options) {
   const list = new ListViewport("git-workspace-picker");
@@ -11288,7 +11290,7 @@ function openWorkspacePicker(overlay, options) {
     key,
     render: (look) => {
       const rows = options.rows();
-      return v_flex22().size_full().min_h(0).child(v_flex22().flex_1().min_h(0).child(list.render(look, {
+      return v_flex23().size_full().min_h(0).child(v_flex23().flex_1().min_h(0).child(list.render(look, {
         length: rows.length,
         focused: true,
         row: ({ index }) => rowElement2(look, rows[index], index),
@@ -11809,10 +11811,10 @@ class WorkspacesBox {
     const { t } = look;
     const row = this.rows[entry.index];
     if (!row)
-      return div26();
+      return div27();
     const focusedRow = focused && entry.index === this.selected;
     const index = entry.index;
-    const element = div26().id(`git-workspace-row-${index}`).absolute().left(0).right(0).top(rows(look, entry.top - this.scroll)).h(rows(look, entry.height)).flex().flex_col().justify_center().overflow_hidden().px(8).bg(focusedRow ? t.accentSoft : t.background).border(1).border_color(focusedRow ? t.accentEdge : t.rule).when(focusedRow, (el) => el.font_weight(600)).when(!focusedRow, (el) => el.hover((style) => style.bg(t.hover))).on_hover((hovered, cx) => {
+    const element = div27().id(`git-workspace-row-${index}`).absolute().left(0).right(0).top(rows(look, entry.top - this.scroll)).h(rows(look, entry.height)).flex().flex_col().justify_center().overflow_hidden().px(8).bg(focusedRow ? t.accentSoft : t.background).border(1).border_color(focusedRow ? t.accentEdge : t.rule).when(focusedRow, (el) => el.font_weight(600)).when(!focusedRow, (el) => el.hover((style) => style.bg(t.hover))).on_hover((hovered, cx) => {
       if (hovered)
         this.hovered = index;
       else if (this.hovered === index)
@@ -11827,11 +11829,11 @@ class WorkspacesBox {
     if (upstream)
       element.child(upstream);
     if (focusedRow)
-      element.child(div26().absolute().bottom(0).left(0).right(0).h(2).bg(t.accent));
+      element.child(div27().absolute().bottom(0).left(0).right(0).h(2).bg(t.accent));
     return element;
   }
   header(look, top, child) {
-    return div26().absolute().left(0).right(0).top(rows(look, top - this.scroll)).h(look.row).flex().items_center().child(child);
+    return div27().absolute().left(0).right(0).top(rows(look, top - this.scroll)).h(look.row).px(4).flex().items_center().child(child);
   }
   addButton(look) {
     const { t } = look;
@@ -11850,7 +11852,7 @@ class WorkspacesBox {
       projects.child(this.addButton(look));
     const children = [
       this.header(look, 0, sectionLabel(look, "Current", { rule: true })),
-      this.header(look, SEPARATOR, div26().w_full().h(1).bg(t.rule)),
+      this.header(look, SEPARATOR, div27().w_full().h(1).bg(t.rule)),
       this.header(look, PROJECTS_HEADER, projects)
     ];
     if (!wide)
@@ -11865,7 +11867,7 @@ class WorkspacesBox {
     const height = this.height || content;
     const visible = placed.filter((entry) => entry.top + entry.height > this.scroll && entry.top < this.scroll + height);
     this.page = Math.max(1, visible.length);
-    const body = div26().id("git-workspaces-list").relative().flex_1().min_h(0).min_w(0).overflow_hidden().on_size_change((size, cx) => {
+    const body = div27().id("git-workspaces-list").relative().flex_1().min_h(0).min_w(0).overflow_hidden().on_size_change((size, cx) => {
       const rows = Math.max(1, Math.floor(size.height / look.screenRow));
       const width = Math.max(1, Math.floor((size.width - 18) / look.screenCell));
       if (rows === this.height && width === this.width)
@@ -12180,7 +12182,7 @@ class Session {
     const tab = this.tabs[this.tab];
     const repository = this.repository;
     const path = repository?.state === "ready" ? repository.root : this.source.current()?.cwd ?? "";
-    const root = v_flex23().id("git").relative().size_full().min_h(0).bg(view.t.background).text_color(view.t.text).font_family(view.font).text_size(view.size).line_height(`${view.row}px`).child(this.shell.header(view)).child(v_flex23().id("git-body").flex_1().min_h(0).min_w(0).p(6).overflow_hidden().on_size_change((size, cx) => {
+    const root = v_flex24().id("git").relative().size_full().min_h(0).bg(view.t.background).text_color(view.t.text).font_family(view.font).text_size(view.size).line_height(`${view.row}px`).child(this.shell.header(view)).child(v_flex24().id("git-body").flex_1().min_h(0).min_w(0).p(6).overflow_hidden().on_size_change((size, cx) => {
       const cols = Math.floor(size.width / view.screenCell);
       const rows = Math.floor(size.height / view.screenRow);
       if (cols === this.body.cols && rows === this.body.rows)
@@ -12216,7 +12218,7 @@ class Git extends View {
     this.session = null;
   }
   render(cx) {
-    return this.session?.render(cx) ?? div27();
+    return this.session?.render(cx) ?? div28();
   }
 }
 export {

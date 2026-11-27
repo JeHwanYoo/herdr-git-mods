@@ -1,8 +1,8 @@
-import { h_flex, InputState } from "gpui-base";
-import type { AsyncContext, Context, Element, FocusHandle, KeyEvent } from "gpui-kit";
+import { h_flex, InputState, v_flex } from "gpui-base";
+import { type AsyncContext, type Context, div, type Element, type FocusHandle, type KeyEvent } from "gpui-kit";
 import type { Overlay, Tone } from "../overlay.ts";
 import type { Look } from "../theme.ts";
-import { box, textInput } from "../widgets.ts";
+import { textInput } from "../widgets.ts";
 
 export interface DialogOptions {
   title: string | { text: string; tone: Tone };
@@ -80,5 +80,27 @@ export abstract class Dialog {
 }
 
 export function inputBox(look: Look, id: string, title: string, input: InputState, focused = false): Element {
-  return box(look, { id, title, focused }, h_flex().h(look.row).child(textInput(look, input))).flex_none();
+  const { t } = look;
+  return v_flex()
+    .id(id)
+    .flex_none()
+    .gap(4)
+    .child(
+      div()
+        .text_size(Math.max(10, look.size - 2))
+        .font_weight(600)
+        .text_color(focused ? t.accentText : t.secondary)
+        .child(title.toUpperCase()),
+    )
+    .child(
+      h_flex()
+        .h(look.row + 8)
+        .px(8)
+        .items_center()
+        .bg(t.background)
+        .border(1)
+        .border_color(focused ? t.accent : t.lineStrong)
+        .rounded(2)
+        .child(textInput(look, input)),
+    );
 }

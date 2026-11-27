@@ -235,7 +235,7 @@ export class Shell {
     const row = h_flex()
       .flex_none()
       .w_full()
-      .px(8)
+      .px(6)
       .gap(2)
       .items_center()
       .bg(t.panel)

@@ -124,7 +124,7 @@ export function sectionLabel(look: Look, text: string, options?: { muted?: boole
     .flex_1()
     .min_w(0)
     .items_center()
-    .gap(6)
+    .gap(8)
     .whitespace_nowrap()
     .child(
       div()
