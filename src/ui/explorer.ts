@@ -17,7 +17,7 @@ import {
 } from "./explorer/search.ts";
 import { type PathRow, PathTree, pathStatuses, workingStatus } from "./explorer/tree.ts";
 import type { AppShortcut, BodySize, RefreshScope, Services, TabStatus, TabView } from "./shell.ts";
-import { type Color, cols, GLYPH, type Look, rows, statusColor } from "./theme.ts";
+import { type Color, cols, GLYPH, type Look, statusColor } from "./theme.ts";
 import {
   box,
   countedTitle,
@@ -26,6 +26,7 @@ import {
   isChord,
   ListViewport,
   scrollbar,
+  sectionLabel,
   viewportOffset,
 } from "./widgets.ts";
 import type { WorkspacesBox } from "./workspaces.ts";
@@ -729,22 +730,19 @@ export class FilesTab implements TabView {
       .whitespace_nowrap()
       .overflow_hidden();
     if (row.kind === "group")
-      return element.child(
-        div()
-          .ml(-cols(look, this.horizontal))
-          .text_color(t.accent)
-          .font_weight(700)
-          .child(countedTitle(row.label, row.count)),
-      );
+      return element.px(4).child(sectionLabel(look, countedTitle(row.label, row.count), { rule: true }));
     const result = this.filter.results[row.index];
     const selected = row.index === this.filter.cursor;
     return element
-      .when(selected, (el) => el.bg(t.focus).font_weight(700))
-      .hover((style) => style.bg(t.hover))
+      .border_l(2)
+      .border_color(selected ? t.accent : "#00000000")
+      .when(selected, (el) => el.bg(t.accentSoft).font_weight(600))
+      .hover((style) => style.bg(selected ? t.accentSoft : t.hover))
       .child(
         div()
           .flex_none()
           .w(cols(look, 2))
+          .text_color(selected ? t.accentText : t.hint)
           .child(selected ? GLYPH.marker : ""),
       )
       .child(
@@ -877,6 +875,7 @@ export class FilesTab implements TabView {
       .flex_1()
       .min_h(0)
       .min_w(0)
+      .gap(6)
       .child(
         v_flex()
           .flex_1()
@@ -889,22 +888,24 @@ export class FilesTab implements TabView {
       ? h_flex()
           .flex_1()
           .min_h(0)
+          .gap(6)
           .items_stretch()
           .child(left.flex_none().w(`${35}%`))
           .child(preview.flex_1().h_full())
       : v_flex()
           .flex_1()
           .min_h(0)
+          .gap(6)
           .child(left.h(`${50}%`).flex_none())
           .child(preview.flex_1());
     return v_flex()
       .size_full()
       .min_h(0)
       .min_w(0)
+      .gap(6)
       .child(
         div()
           .flex_none()
-          .h(rows(look, 3))
           .on_key_down((event, cx) => this.filterInputKey(event, cx))
           .on_mouse_down("left", (_, cx) => {
             this.openFilter();

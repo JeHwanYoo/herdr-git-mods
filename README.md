@@ -2,6 +2,8 @@
 
 Essential Git, in one pane. No extra setup, no overlays covering your Herdr.
 
+![Herdr Git Mods](preview.png)
+
 A Git client for the [Herdr App](https://herdr.dev), and the next version of the [herdr-git](https://github.com/JeHwanYoo/herdr-git) TUI plugin.
 
 ## Principles
@@ -54,6 +56,17 @@ Git checks GitHub Releases for updates while its pane is open. Open **Settings �
 | Cherry-pick, revert & reset | Apply a commit, undo it, or reset to it                                                                                                            |
 | Stash                       | Save uncommitted changes and restore them                                                                                                          |
 | Workspaces                  | Switch between repositories, Projects, and worktrees                                                                                               |
+
+## Themes
+
+Herdr Git Mods ships with two built-in Deepfield themes: **Void** for dark mode and **Frost** for light mode. By default, **Settings → Theme** is set to **Auto** and follows Herdr's dark or light theme, or you can pick **Void** or **Frost** directly from the dropdown.
+
+<table>
+  <tr>
+    <td width="50%" align="center"><a href="docs/images/theme-void.png"><img src="docs/images/theme-void.png" alt="Void dark theme"></a><br><sub><b>Void</b> — Dark theme</sub></td>
+    <td width="50%" align="center"><a href="docs/images/theme-frost.png"><img src="docs/images/theme-frost.png" alt="Frost light theme"></a><br><sub><b>Frost</b> — Light theme</sub></td>
+  </tr>
+</table>
 
 ## Keyboard shortcuts
 

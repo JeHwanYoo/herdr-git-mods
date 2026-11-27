@@ -121,11 +121,11 @@ export function tokenColor(look: Look, kind: TokenKind): Color {
   const { t } = look;
   const colors: Record<TokenKind, Color> = {
     plain: t.text,
-    keyword: t.unmerged,
+    keyword: t.info,
     string: t.success,
-    comment: t.secondary,
-    number: t.reference,
-    function: t.typeChange,
+    comment: t.hint,
+    number: t.ice,
+    function: t.accentText,
     type: t.warning,
   };
   return colors[kind];

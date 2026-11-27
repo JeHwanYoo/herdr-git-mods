@@ -848,11 +848,108 @@ import { div as div3 } from "gpui-kit";
 
 // src/ui/theme.ts
 import { settings, theme } from "herdr";
-var MISSING = "#00000000";
+var THEME_STORAGE_KEY = "git-theme";
 var FALLBACK_FONT = "JetBrains Mono";
 var FALLBACK_SIZE = 14;
 var CELL_RATIO = 0.6;
 var ROW_RATIO = 1.3;
+var LIGHT_LUMINANCE = 140;
+var VOID = {
+  surface0: "#04080f",
+  background: "#08111d",
+  panel: "#0d1a2b",
+  panelFocus: "#10253a",
+  hover: "#14263d",
+  accent: "#35d6ff",
+  accentStrong: "#7be4ff",
+  accentText: "#5fdfff",
+  accentSoft: "#35d6ff1f",
+  accentEdge: "#35d6ff59",
+  text: "#e8f4ff",
+  textInverse: "#03121c",
+  hint: "#7893ad",
+  secondary: "#9db7cf",
+  muted: "#7893ad",
+  error: "#ff6b7d",
+  success: "#3fe0c0",
+  warning: "#ffb24a",
+  info: "#6aa6ff",
+  azure: "#3b8cff",
+  ice: "#b9ecff",
+  reference: "#5fdfff",
+  typeChange: "#6aa6ff",
+  unmerged: "#ffb24a",
+  focus: "#35d6ff1f",
+  selection: "#35d6ff2b",
+  header: "#08111d",
+  inert: "#08111d",
+  rule: "#1f3a57",
+  lineStrong: "#4a80ab",
+  scrim: "#04080fc2",
+  diffAdded: "#3fe0c024",
+  diffRemoved: "#ff6b7d24",
+  badgeHead: "#ff6b7d1f",
+  badgeHeadBorder: "#ff6b7d8c",
+  badgeLocal: "#3fe0c01f",
+  badgeLocalBorder: "#3fe0c08c",
+  badgeRemote: "#6aa6ff1f",
+  badgeRemoteBorder: "#6aa6ff8c",
+  badgeRemoteHead: "#3b8cff1f",
+  badgeRemoteHeadBorder: "#3b8cff8c",
+  badgeTag: "#ffb24a1f",
+  badgeTagBorder: "#ffb24a8c",
+  badgeOther: "#5fdfff1f",
+  badgeOtherBorder: "#5fdfff8c",
+  lanes: ["#35d6ff", "#3b8cff", "#3fe0c0", "#ffb24a", "#ff6b7d", "#b9ecff"]
+};
+var FROST = {
+  surface0: "#e3edf7",
+  background: "#f1f7fc",
+  panel: "#ffffff",
+  panelFocus: "#f0f7fa",
+  hover: "#d9e7f3",
+  accent: "#0a6f94",
+  accentStrong: "#05587a",
+  accentText: "#05638a",
+  accentSoft: "#0a6f941a",
+  accentEdge: "#0a6f9459",
+  text: "#07192b",
+  textInverse: "#ffffff",
+  hint: "#486782",
+  secondary: "#3a5671",
+  muted: "#486782",
+  error: "#b3182f",
+  success: "#00735b",
+  warning: "#8a5200",
+  info: "#1f5fc4",
+  azure: "#1f63d6",
+  ice: "#8fd9f5",
+  reference: "#05638a",
+  typeChange: "#1f5fc4",
+  unmerged: "#8a5200",
+  focus: "#0a6f941a",
+  selection: "#0a6f9429",
+  header: "#f1f7fc",
+  inert: "#f1f7fc",
+  rule: "#b4cbe0",
+  lineStrong: "#5b86a8",
+  scrim: "#e3edf7c2",
+  diffAdded: "#00735b1f",
+  diffRemoved: "#b3182f1f",
+  badgeHead: "#b3182f1f",
+  badgeHeadBorder: "#b3182f8c",
+  badgeLocal: "#00735b1f",
+  badgeLocalBorder: "#00735b8c",
+  badgeRemote: "#1f5fc41f",
+  badgeRemoteBorder: "#1f5fc48c",
+  badgeRemoteHead: "#1f63d61f",
+  badgeRemoteHeadBorder: "#1f63d68c",
+  badgeTag: "#8a52001f",
+  badgeTagBorder: "#8a52008c",
+  badgeOther: "#05638a1f",
+  badgeOtherBorder: "#05638a8c",
+  lanes: ["#0a6f94", "#1f63d6", "#00735b", "#8a5200", "#b3182f", "#5b86a8"]
+};
 var GLYPH = {
   marker: "▶ ",
   cursor: "▏",
@@ -866,48 +963,33 @@ var GLYPH = {
 var SPINNER = { frames: ["⠋", "⠙", "⠹", "⠸", "⠼", "⠴", "⠦", "⠧", "⠇", "⠏"], ms: 100 };
 var DIALOG = { narrow: 56, medium: 68, wide: 78, card: 82 };
 var WIDE_COLUMNS = 90;
-function color(value) {
-  return typeof value === "string" && value.startsWith("#") ? value : MISSING;
+function themeMode() {
+  const saved = localStorage.getItem(THEME_STORAGE_KEY);
+  if (saved === "void" || saved === "frost")
+    return saved;
+  return "auto";
 }
-function tinted(value, alpha) {
-  const base = color(value);
-  return base === MISSING ? MISSING : `${base.slice(0, 7)}${alpha}`;
+function setThemeMode(mode) {
+  localStorage.setItem(THEME_STORAGE_KEY, mode);
+}
+function isLightHex(value) {
+  if (!value?.startsWith("#") || value.length < 7)
+    return false;
+  const r = Number.parseInt(value.slice(1, 3), 16);
+  const g = Number.parseInt(value.slice(3, 5), 16);
+  const b = Number.parseInt(value.slice(5, 7), 16);
+  if (Number.isNaN(r) || Number.isNaN(g) || Number.isNaN(b))
+    return false;
+  return 0.299 * r + 0.587 * g + 0.114 * b > LIGHT_LUMINANCE;
 }
 function palette() {
+  const mode = themeMode();
+  if (mode === "void")
+    return VOID;
+  if (mode === "frost")
+    return FROST;
   const names = theme();
-  const named = (name) => color(names[name]);
-  const tint = (name, alpha) => tinted(names[name], alpha);
-  return {
-    background: named("background"),
-    accent: named("accent"),
-    text: named("foreground"),
-    textInverse: named("accent_foreground"),
-    hint: named("foreground"),
-    secondary: named("muted"),
-    muted: named("dim"),
-    error: named("ansi1"),
-    success: named("ansi2"),
-    warning: named("ansi3"),
-    reference: named("ansi11"),
-    typeChange: named("ansi4"),
-    unmerged: named("ansi5"),
-    focus: named("selected"),
-    hover: named("hover"),
-    selection: named("selection"),
-    panel: named("popover"),
-    header: named("raised"),
-    inert: named("raised"),
-    rule: named("border"),
-    diffAdded: tint("ansi2", "33"),
-    diffRemoved: tint("ansi1", "33"),
-    badgeHead: tint("ansi1", "40"),
-    badgeLocal: tint("ansi2", "40"),
-    badgeRemote: tint("ansi4", "40"),
-    badgeRemoteHead: tint("ansi5", "40"),
-    badgeTag: tint("ansi3", "40"),
-    badgeOther: tint("ansi5", "2a"),
-    lanes: ["ansi11", "ansi14", "ansi10", "ansi13", "ansi9", "ansi12"].map(named)
-  };
+  return isLightHex(names.background) ? FROST : VOID;
 }
 function setting(...keys) {
   const values = settings();
@@ -953,7 +1035,7 @@ function statusColor(t, status) {
   if (letter === "D")
     return t.error;
   if (letter === "R" || letter === "C")
-    return t.accent;
+    return t.accentText;
   if (letter === "T")
     return t.typeChange;
   if (letter === "U")
@@ -1074,8 +1156,8 @@ function spansWidth(spans) {
   return spans.reduce((total, span) => total + displayWidth(span.text) + (span.icon ? ICON_CELLS : 0), 0);
 }
 function spanElements(look, spans) {
-  return spans.map(({ text, icon, color, bg, bold }) => {
-    const span = h_flex().flex_none().items_center().when(!!color, (el) => el.text_color(color ?? look.t.text)).when(!!bg, (el) => el.bg(bg ?? look.t.panel)).when(!!bold, (el) => el.font_weight(700));
+  return spans.map(({ text, icon, color, bg, border, bold }) => {
+    const span = h_flex().flex_none().items_center().when(!!color, (el) => el.text_color(color ?? look.t.text)).when(!!bg, (el) => el.bg(bg ?? look.t.panel)).when(!!border, (el) => el.border(1).border_color(border ?? look.t.rule).rounded(2)).when(!!bold, (el) => el.font_weight(700));
     if (icon)
       span.child(iconCell(look, icon, color));
     return span.child(text);
@@ -1094,35 +1176,80 @@ function isChord(event) {
 function spinner(look) {
   return div2().flex_none().text_color(look.t.accent).frames([...SPINNER.frames], SPINNER.ms);
 }
+function kbd(look, key, active = false) {
+  const { t } = look;
+  return h_flex().flex_none().items_center().justify_center().px(4).h(Math.max(16, look.row - 2)).bg(t.hover).border(1).border_b(2).border_color(active ? t.accent : t.lineStrong).rounded(2).text_size(Math.max(10, look.size - 3)).font_weight(600).text_color(active ? t.accentText : t.secondary).child(key);
+}
+function sectionLabel(look, text, options) {
+  const { t } = look;
+  const muted = options?.muted ?? false;
+  return h_flex().flex_1().min_w(0).items_center().gap(6).whitespace_nowrap().child(div2().flex_none().w(6).h(6).rounded_full().bg(muted ? t.lineStrong : t.accent)).child(div2().flex_none().text_size(Math.max(10, look.size - 2)).font_weight(600).text_color(muted ? t.hint : t.secondary).child(text.toUpperCase())).when(!!options?.rule, (el) => el.child(div2().flex_1().h(1).bg(t.rule)));
+}
 function box(look, options, body) {
   const { t } = look;
-  const half = look.row / 2;
-  const edge = look.cell / 2;
-  const surface = options.surface ?? t.background;
-  const frame = v_flex().flex_1().min_h(0).min_w(0).border(1).border_color(options.focused ? t.accent : t.rule).pt(half - 1).pb(half - 1).px(edge - 1).child(body);
-  const outer = v_flex().id(options.id).relative().min_h(0).min_w(0).pt(half).pb(half).px(edge).bg(surface).child(frame);
-  if (options.title === undefined)
-    return outer;
-  return outer.child(h_flex().absolute().top(0).left(look.cell).h(look.row).items_center().bg(surface).text_color(t.text).whitespace_nowrap().child(options.title));
+  const focused = options.focused ?? false;
+  const surface = options.surface ?? (focused ? t.panelFocus : t.panel);
+  const outer = v_flex().id(options.id).relative().min_h(0).min_w(0).bg(surface).border(1).border_color(focused ? t.accentEdge : t.rule);
+  if (options.title !== undefined) {
+    const titleContent = typeof options.title === "string" ? div2().flex_1().min_w(0).truncate().text_size(Math.max(10, look.size - 2)).font_weight(600).text_color(t.text).child(options.title.toUpperCase()) : h_flex().flex_1().min_w(0).items_center().overflow_hidden().whitespace_nowrap().text_color(t.text).child(options.title);
+    outer.child(h_flex().flex_none().h(look.row + 6).px(8).gap(8).items_center().border_b(1).border_color(t.rule).child(div2().flex_none().w(6).h(6).rounded_full().bg(t.accent)).child(titleContent));
+  }
+  outer.child(v_flex().flex_1().min_h(0).min_w(0).px(4).py(2).child(body));
+  if (focused)
+    outer.child(div2().absolute().bottom(0).left(0).right(0).h(2).bg(t.accent));
+  return outer;
 }
 var ACTION_SLOTS = 6;
 function actionContent(look, cell, hints, color) {
-  const gap = "  ";
   if (cell.running)
-    return [spinner(look), div2().text_color(color).child(`${gap}${cell.running}`)];
+    return [spinner(look), div2().text_color(color).ml(6).truncate().child(cell.running)];
   if (hints)
     return [
-      div2().text_color(cell.enabled ? look.t.accent : color).font_weight(700).child(cell.shortcut.toUpperCase()),
-      div2().text_color(color).child(`${gap}${cell.label}`)
+      kbd(look, cell.shortcut.toUpperCase(), cell.enabled),
+      div2().text_color(color).ml(6).truncate().child(cell.label)
     ];
-  const symbol = cell.symbol ? `${cell.symbol}${gap}` : cell.icon ? " " : "";
+  const symbol = cell.symbol ? `${cell.symbol} ` : "";
   const label = div2().text_color(color).truncate().child(symbol + cell.label);
-  return cell.icon ? [iconCell(look, cell.icon, color), label] : [label];
+  return cell.icon ? [iconCell(look, cell.icon, color), div2().w(2), label] : [label];
+}
+function actionColors(look, cell) {
+  const { t } = look;
+  if (cell.selected)
+    return {
+      bg: t.accentSoft,
+      border: t.accentEdge,
+      text: t.accentText,
+      hoverBg: t.accentSoft,
+      hoverBorder: t.accent
+    };
+  if (cell.variant === "primary" && cell.enabled)
+    return {
+      bg: t.accent,
+      border: t.accent,
+      text: t.textInverse,
+      hoverBg: t.accentStrong,
+      hoverBorder: t.accentStrong
+    };
+  if (cell.variant === "danger" && cell.enabled)
+    return {
+      bg: t.panel,
+      border: t.error,
+      text: t.error,
+      hoverBg: t.diffRemoved,
+      hoverBorder: t.error
+    };
+  return {
+    bg: t.panel,
+    border: cell.enabled ? t.lineStrong : t.rule,
+    text: cell.enabled ? t.text : t.muted,
+    hoverBg: t.accentSoft,
+    hoverBorder: t.accent
+  };
 }
 function actionButton(look, cell, hints) {
   const { t } = look;
-  const color = cell.selected ? t.accent : cell.enabled ? t.text : t.muted;
-  return Button.new(cell.id).accessibility_label(cell.label).flex_1().min_w(0).h(look.row).bg(t.panel).disabled(!cell.enabled).when(!!cell.selected, (el) => el.font_weight(700)).when(cell.enabled, (el) => el.hover((style) => style.bg(t.hover))).child(h_flex().size_full().min_w(0).justify_center().items_center().overflow_hidden().whitespace_nowrap().children(actionContent(look, cell, hints, color))).on_click((_, cx) => {
+  const style = actionColors(look, cell);
+  return Button.new(cell.id).accessibility_label(cell.label).relative().flex_1().min_w(0).h(look.row + 6).bg(style.bg).border(1).border_color(style.border).rounded(2).disabled(!cell.enabled).when(!cell.enabled, (el) => el.opacity(0.42)).when(!!cell.selected || cell.variant === "primary", (el) => el.font_weight(600)).when(cell.enabled, (el) => el.hover((hovered) => hovered.bg(style.hoverBg).border_color(style.hoverBorder))).child(h_flex().size_full().min_w(0).px(6).justify_center().items_center().overflow_hidden().whitespace_nowrap().children(actionContent(look, cell, hints, style.text))).when(!!cell.selected, (el) => el.child(div2().absolute().bottom(0).left(0).right(0).h(2).bg(t.accent))).on_click((_, cx) => {
     cx.stop_propagation();
     if (!cell.enabled)
       return;
@@ -1131,7 +1258,7 @@ function actionButton(look, cell, hints) {
   });
 }
 function actionBar(look, cells, hints) {
-  const bar = h_flex().w_full().h(look.row).flex_none().gap(look.cell);
+  const bar = h_flex().w_full().h(look.row + 6).flex_none().gap(6);
   for (const cell of cells.slice(0, ACTION_SLOTS))
     bar.child(actionButton(look, cell, hints));
   for (let slot = cells.length;slot < ACTION_SLOTS; slot++)
@@ -1140,30 +1267,32 @@ function actionBar(look, cells, hints) {
 }
 function tabLabel(look, options, hints) {
   const { t } = look;
-  const color = options.active ? t.textInverse : t.hint;
-  const label = Button.new(options.id).accessibility_label(options.label).flex_none().h(look.row).items_center().text_color(color).when(options.active, (el) => el.bg(t.accent).font_weight(700)).hover((style) => style.bg(options.active ? t.accent : t.hover)).on_click((_, cx) => {
+  const label = Button.new(options.id).accessibility_label(options.label).relative().flex_none().h(look.row + 10).px(10).items_center().text_size(Math.max(11, look.size - 1)).text_color(options.active ? t.accentText : t.secondary).when(options.active, (el) => el.bg(t.accentSoft).font_weight(600)).hover((style) => style.bg(t.accentSoft).text_color(options.active ? t.accentText : t.text)).when(options.active, (el) => el.child(div2().absolute().bottom(0).left(0).right(0).h(2).bg(t.accent))).on_click((_, cx) => {
     cx.stop_propagation();
     options.onClick(cx);
     cx.notify();
   });
+  const text = options.label.toUpperCase();
   if (!hints)
-    return label.child(` ${options.label} `);
-  return label.child(h_flex().child(div2().font_weight(700).when(options.active, (el) => el.underline()).when(!options.active, (el) => el.text_color(t.accent)).child(options.shortcut)).child(` ${options.label}`));
+    return label.child(text);
+  return label.child(h_flex().items_center().gap(6).child(kbd(look, options.shortcut.toUpperCase(), options.active)).child(text));
 }
 function textInput(look, input, color) {
   return Input.new(input).flex_1().min_w(0).h(look.row).text_color(color ?? look.t.text);
 }
 function filterBar(look, options) {
-  const color = options.active ? look.t.warning : look.t.text;
-  return box(look, { id: options.id, title: options.title ?? "Filter" }, h_flex().h(look.row).items_center().text_color(color).child(div2().flex_none().child("/ ")).child(textInput(look, options.input, color))).flex_none();
+  const { t } = look;
+  const promptColor = options.active ? t.accentText : t.hint;
+  return h_flex().id(options.id).relative().flex_none().h(look.row + 8).px(8).gap(6).items_center().bg(t.panel).border(1).border_color(options.active ? t.accent : t.lineStrong).rounded(2).child(div2().flex_none().text_color(promptColor).font_weight(600).child("/")).child(textInput(look, options.input, t.text)).when(options.active, (el) => el.child(div2().absolute().bottom(0).left(0).right(0).h(2).bg(t.accent)));
 }
 function dialogFrame(look, options, body) {
-  return box(look, { id: options.id, title: options.title }, body).w(cols(look, options.width)).max_w("100%").max_h("100%").on_mouse_down("left", (_, cx) => cx.stop_propagation());
+  return box(look, { id: options.id, title: options.title, surface: look.t.panel }, v_flex().min_w(0).min_h(0).flex_1().p(8).gap(6).child(body)).shadow_lg().w(cols(look, options.width)).max_w("100%").max_h("100%").on_mouse_down("left", (_, cx) => cx.stop_propagation());
 }
-function footerButton(look, button) {
+function footerButton(look, button, primary) {
   const { t } = look;
   const enabled = button.enabled ?? true;
-  return Button.new(button.id).accessibility_label(button.label).flex_1().min_w(0).h(rows(look, 3)).disabled(!enabled).child(h_flex().size_full().justify_center().items_center().border(1).border_color(t.rule).text_color(enabled ? t.text : t.muted).when(!!button.focused, (el) => el.bg(t.focus).font_weight(700)).when(enabled, (el) => el.hover((style) => style.bg(t.hover))).child(button.label)).on_click((_, cx) => {
+  const filled = primary && enabled;
+  return Button.new(button.id).accessibility_label(button.label).flex_1().min_w(0).h(look.row + 10).disabled(!enabled).when(!enabled, (el) => el.opacity(0.42)).child(h_flex().size_full().justify_center().items_center().border(1).rounded(2).when(filled, (el) => el.bg(t.accent).border_color(t.accent).text_color(t.textInverse).font_weight(600).hover((style) => style.bg(t.accentStrong).border_color(t.accentStrong))).when(!filled, (el) => el.bg(button.focused ? t.accentSoft : t.panel).border_color(button.focused ? t.accent : enabled ? t.lineStrong : t.rule).text_color(enabled ? t.text : t.muted).when(!!button.focused, (el) => el.font_weight(600)).when(enabled, (el) => el.hover((style) => style.bg(t.accentSoft).border_color(t.accent)))).child(button.label)).on_click((_, cx) => {
     cx.stop_propagation();
     if (!enabled)
       return;
@@ -1172,7 +1301,7 @@ function footerButton(look, button) {
   });
 }
 function dialogFooter(look, primary, secondary) {
-  return h_flex().flex_none().w_full().py(look.row / 2 - 1).gap(look.cell).child(footerButton(look, primary)).child(footerButton(look, secondary));
+  return h_flex().flex_none().w_full().pt(6).gap(8).child(footerButton(look, primary, true)).child(footerButton(look, secondary, false));
 }
 function footerHint(look, text) {
   return div2().flex_none().h(look.row).text_color(look.t.hint).truncate().child(text);
@@ -1181,11 +1310,11 @@ function scrollbar(look, options) {
   if (options.total <= options.visible || options.total <= 0)
     return null;
   const { t } = look;
-  const size = Math.max(4, options.visible / options.total * 100);
+  const size = Math.max(6, options.visible / options.total * 100);
   const start = Math.min(100 - size, options.offset / options.total * 100);
   if (options.axis === "vertical")
-    return div2().relative().flex_none().w(look.cell).h_full().child(div2().absolute().top(0).bottom(0).left(look.cell / 2 - 1).w(2).bg(t.muted)).child(div2().absolute().top(`${start}%`).h(`${size}%`).left(0).right(0).bg(t.accent));
-  return div2().relative().flex_none().h(look.row).w_full().child(div2().absolute().left(0).right(0).top(look.row / 2).h(1).bg(t.muted)).child(div2().absolute().left(`${start}%`).w(`${size}%`).top(look.row / 2).bottom(0).bg(t.accent));
+    return div2().relative().flex_none().w(6).h_full().bg(t.hover).child(div2().absolute().top(`${start}%`).h(`${size}%`).left(1).right(1).bg(t.lineStrong).rounded(1));
+  return div2().relative().flex_none().h(6).w_full().bg(t.hover).child(div2().absolute().left(`${start}%`).w(`${size}%`).top(1).bottom(1).bg(t.lineStrong).rounded(1));
 }
 function viewportOffset(offset, selected, length, height) {
   const clamped = Math.max(0, Math.min(offset, length - 1));
@@ -1268,7 +1397,8 @@ class ListViewport {
     const list = v_flex().flex_1().min_w(0).min_h(0).overflow_hidden();
     for (let index = this.scroll;index < end; index++) {
       const selected = index === this.selected;
-      const row = h_flex().id(`${this.id}-row-${index}`).flex_none().h(look.row).min_w(0).items_center().whitespace_nowrap().overflow_hidden().when(selected && options.focused, (el) => el.bg(t.focus).font_weight(700)).hover((style) => style.bg(t.hover)).on_click((_, cx) => {
+      const active = selected && options.focused;
+      const row = h_flex().id(`${this.id}-row-${index}`).flex_none().h(look.row).min_w(0).items_center().whitespace_nowrap().overflow_hidden().border_l(2).border_color(active ? t.accent : "#00000000").when(active, (el) => el.bg(t.accentSoft).font_weight(600)).hover((style) => style.bg(active ? t.accentSoft : t.hover)).on_click((_, cx) => {
         cx.stop_propagation();
         this.selected = index;
         options.onSelect?.(index, cx);
@@ -1276,7 +1406,7 @@ class ListViewport {
         cx.notify();
       });
       if (options.marker ?? true)
-        row.child(div2().flex_none().w(cols(look, 2)).child(selected ? GLYPH.marker : ""));
+        row.child(div2().flex_none().w(cols(look, 2)).text_color(active ? t.accentText : t.hint).child(selected ? GLYPH.marker : ""));
       list.child(row.child(options.row({ index, selected, focused: options.focused })));
     }
     const bar = scrollbar(look, {
@@ -1904,9 +2034,16 @@ class FilesPane {
     const stages = operation.kind === "stage" || operation.kind === "stage-all";
     const cells = [];
     if (discard)
-      cells.push(div4().flex_none().w(cols(look, OVERLAY)).bg(t.warning).text_color(t.textInverse).font_weight(700).child(" ↶ "));
-    cells.push(div4().flex_none().w(cols(look, OVERLAY)).bg(stages ? t.success : t.warning).text_color(t.textInverse).font_weight(700).child(stages ? " + " : " - "));
+      cells.push(div4().flex_none().w(cols(look, OVERLAY)).bg(t.warning).text_color(t.textInverse).rounded(2).font_weight(700).child(" ↶ "));
+    cells.push(div4().flex_none().w(cols(look, OVERLAY)).bg(stages ? t.success : t.warning).text_color(t.textInverse).rounded(2).font_weight(700).child(stages ? " + " : " - "));
     return cells;
+  }
+  rowBackground(t, focusedRow, hovered, selectedRow) {
+    if (focusedRow)
+      return t.accentSoft;
+    if (hovered)
+      return t.hover;
+    return selectedRow ? t.selection : null;
   }
   rowElement(look, index, selection, owner) {
     const { t } = look;
@@ -1918,9 +2055,9 @@ class FilesPane {
     const focusedRow = index === this.selected;
     const selectedRow = row.kind === "file" && selection.has(key);
     const hovered = index === this.hovered;
-    const background = focusedRow ? t.focus : hovered ? t.hover : selectedRow ? t.selection : null;
+    const background = this.rowBackground(t, focusedRow, hovered, selectedRow);
     const spans = sliceSpans(this.line(look, row), this.horizontal, Math.max(1, this.width - 2));
-    const element = h_flex3().flex_none().h(look.row).min_w(0).overflow_hidden().whitespace_nowrap().when(!!background, (el) => el.bg(background ?? t.background)).when(focusedRow || selectedRow, (el) => el.font_weight(700)).child(div4().flex_none().w(cols(look, 2)).child(focusedRow ? GLYPH.marker : "")).child(h_flex3().flex_1().min_w(0).overflow_hidden().children(spans.map((span) => div4().flex_none().text_color(span.color).when(!!span.bold, (el) => el.font_weight(700)).child(span.text))));
+    const element = h_flex3().flex_none().h(look.row).min_w(0).overflow_hidden().whitespace_nowrap().border_l(2).border_color(focusedRow ? t.accent : "#00000000").when(!!background, (el) => el.bg(background ?? t.background)).when(focusedRow || selectedRow, (el) => el.font_weight(600)).child(div4().flex_none().w(cols(look, 2)).text_color(focusedRow ? t.accentText : t.hint).child(focusedRow ? GLYPH.marker : "")).child(h_flex3().flex_1().min_w(0).overflow_hidden().children(spans.map((span) => div4().flex_none().text_color(span.color).when(!!span.bold, (el) => el.font_weight(700)).child(span.text))));
     if (owner !== null && owner === key)
       return element.child(div4().flex_none().w(cols(look, OVERLAY)).bg(t.hover).flex().justify_center().child(spinner(look)));
     const operation = hovered ? stagingOperation(row, changes) : null;
@@ -1938,7 +2075,7 @@ class FilesPane {
     const selection = this.view();
     const counted = countedTitle("Files", this.host.changes().length);
     const text = selection.size ? `${counted} · Selected ${selection.size}` : counted;
-    const title = options.hints ? h_flex3().child(div4().text_color(t.accent).font_weight(700).child("O")).child(` Find Files${text.slice("Files".length)}`) : text;
+    const title = options.hints ? h_flex3().items_center().gap(6).child(kbd(look, "O", true)).child(div4().text_size(Math.max(10, look.size - 2)).font_weight(600).child(`FIND FILES${text.slice("Files".length).toUpperCase()}`)) : text;
     const list = v_flex3().flex_1().min_w(0).min_h(0).overflow_hidden();
     const end = Math.min(this.rows.length, this.scroll + Math.max(1, this.height));
     for (let index = this.scroll;index < end; index++)
@@ -1978,7 +2115,7 @@ import { Button as Button2, h_flex as h_flex4, v_flex as v_flex4 } from "gpui-ba
 import { div as div5 } from "gpui-kit";
 var VISIBLE_MS = 2000;
 var CHROME = 6;
-function color2(look, tone) {
+function color(look, tone) {
   const { t } = look;
   if (tone === "accent")
     return t.accent;
@@ -1994,7 +2131,7 @@ function color2(look, tone) {
 }
 function closeButton(look, overlay) {
   const { t } = look;
-  return Button2.new("git-result-close").accessibility_label("Close").w_full().h(rows(look, 3)).child(h_flex4().size_full().justify_center().items_center().border(1).border_color(t.rule).hover((style) => style.bg(t.hover)).child("[Enter] Close")).on_click((_, cx) => {
+  return Button2.new("git-result-close").accessibility_label("Close").w_full().h(look.row + 10).child(h_flex4().size_full().justify_center().items_center().bg(t.accent).border(1).border_color(t.accent).rounded(2).text_color(t.textInverse).font_weight(600).hover((style) => style.bg(t.accentStrong).border_color(t.accentStrong)).child("[Enter] Close")).on_click((_, cx) => {
     cx.stop_propagation();
     overlay.close(cx);
     cx.notify();
@@ -2007,7 +2144,7 @@ function showResultLines(overlay, title, success, content, cx) {
     title: { text: title, tone: success ? "success" : "error" },
     width: DIALOG.card,
     height: height - 2,
-    render: (look) => v_flex4().size_full().min_h(0).child(v_flex4().flex_1().min_h(0).overflow_hidden().children(content.map((line) => div5().flex_none().min_h(look.row).whitespace_normal().text_color(color2(look, line.tone ?? (success ? "text" : "error"))).when(!!line.bold, (el) => el.font_weight(700)).child(line.text)))).child(div5().flex_none().h(look.row)).child(closeButton(look, overlay)),
+    render: (look) => v_flex4().size_full().min_h(0).child(v_flex4().flex_1().min_h(0).overflow_hidden().children(content.map((line) => div5().flex_none().min_h(look.row).whitespace_normal().text_color(color(look, line.tone ?? (success ? "text" : "error"))).when(!!line.bold, (el) => el.font_weight(700)).child(line.text)))).child(div5().flex_none().h(look.row)).child(closeButton(look, overlay)),
     key: (event, cx) => {
       if (event.keystroke === "escape")
         return true;
@@ -2326,11 +2463,11 @@ function tokenColor(look, kind) {
   const { t } = look;
   const colors = {
     plain: t.text,
-    keyword: t.unmerged,
+    keyword: t.info,
     string: t.success,
-    comment: t.secondary,
-    number: t.reference,
-    function: t.typeChange,
+    comment: t.hint,
+    number: t.ice,
+    function: t.accentText,
     type: t.warning
   };
   return colors[kind];
@@ -2547,11 +2684,10 @@ function buildDiff(patch, path, toggles) {
 
 // src/ui/code-view.ts
 var HINT_KEYS = [
-  ["y", " Yank · "],
-  ["h", " History · "],
-  ["Esc", " Cancel"]
+  ["y", "Yank"],
+  ["h", "History"],
+  ["Esc", "Cancel"]
 ];
-var HINT_WIDTH = HINT_KEYS.reduce((width, [key, label]) => width + displayWidth(key + label), 0) + 4;
 function highlight(text, path) {
   return highlighter(path).line(text);
 }
@@ -2685,12 +2821,12 @@ function selectionHint(look, id, spec) {
   if (visibleFirst > visibleLast)
     return null;
   const below = visibleLast - spec.scroll + 1;
-  const top = below + 3 <= spec.measure.rows ? below : Math.max(0, visibleFirst - spec.scroll - 3);
+  const top = below + 2 <= spec.measure.rows ? below : Math.max(0, visibleFirst - spec.scroll - 2);
   const { t } = look;
-  const keys = h_flex6().h(look.row).whitespace_nowrap();
+  const keys = h_flex6().id(`${id}-hint`).absolute().top(rows(look, top)).left(cols(look, 6)).h(look.row + 10).px(8).gap(8).items_center().bg(t.panel).border(1).border_color(t.lineStrong).rounded(2).shadow_md().whitespace_nowrap();
   for (const [key, label] of HINT_KEYS)
-    keys.child(div7().text_color(t.accent).font_weight(700).child(key)).child(div7().text_color(t.hint).child(label));
-  return box(look, { id: `${id}-hint`, focused: true }, keys).absolute().top(rows(look, top)).left(cols(look, 6)).w(cols(look, HINT_WIDTH)).h(rows(look, 3));
+    keys.child(h_flex6().items_center().gap(4).child(kbd(look, key, true)).child(div7().text_color(t.secondary).child(label)));
+  return keys;
 }
 function scrollTrack(look, id, bar, vertical, onPosition) {
   let dragging = false;
@@ -4629,7 +4765,7 @@ ${paths.slice(0, 5).join(`
       cx.stop_propagation();
       this.divider = index;
       cx.notify();
-    }).when(shown, (el) => el.child(div9().absolute().top(0).bottom(0).left(look.cell).w(look.cell).bg(t.hover).child(div9().absolute().top(0).bottom(0).left(look.cell / 2 - 1).w(2).bg(t.accent))));
+    }).when(shown, (el) => el.child(div9().absolute().top(0).bottom(0).left(look.cell).w(look.cell).bg(t.accentSoft).child(div9().absolute().top(0).bottom(0).left(look.cell / 2 - 1).w(2).bg(t.accent))));
   }
   selectionTitle(look, side) {
     const selection = this.diff.selection();
@@ -4637,7 +4773,7 @@ ${paths.slice(0, 5).join(`
     if (!selection || selection.side !== side || !change)
       return null;
     const name = change.path.split("/").pop() ?? change.path;
-    return h_flex8().child(`${side} · `).child(div9().text_color(look.t.accent).font_weight(700).child(`${name}:${lineNumbersText(selection.lines)}`));
+    return h_flex8().text_size(Math.max(10, look.size - 2)).font_weight(600).child(`${side.toUpperCase()} · `).child(div9().text_color(look.t.accentText).font_weight(600).child(`${name}:${lineNumbersText(selection.lines)}`));
   }
   diffBoxes(look) {
     const focused = this.focused === "diff" && !this.workspaces.isFocused();
@@ -4696,9 +4832,9 @@ ${paths.slice(0, 5).join(`
       repository: !repository || repository.state === "ready",
       owner: this.services.busy() ? this.stagingOwner : null
     }).flex_1());
-    const left = v_flex8().min_h(0).min_w(0).child(filesBox).child(v_flex8().flex_1().min_h(0).min_w(0).child(this.workspaces.render(look).flex_1()));
+    const left = v_flex8().min_h(0).min_w(0).gap(6).child(filesBox).child(v_flex8().flex_1().min_h(0).min_w(0).child(this.workspaces.render(look).flex_1()));
     const { before, after } = this.diffBoxes(look);
-    const root = (size.wide ? h_flex8() : v_flex8()).id("git-changes").relative().size_full().min_h(0).min_w(0).on_key_down((event, cx) => this.comparisonKey(event, cx)).on_mouse_up("left", (_, cx) => {
+    const root = (size.wide ? h_flex8() : v_flex8()).id("git-changes").relative().size_full().min_h(0).min_w(0).gap(6).on_key_down((event, cx) => this.comparisonKey(event, cx)).on_mouse_up("left", (_, cx) => {
       this.divider = null;
       this.diff.pointerUp(cx);
       this.files.pointerUp(cx);
@@ -5696,7 +5832,8 @@ ${description}` : subject;
   }
   check(look, id, label, on, focus, toggle) {
     const { t } = look;
-    return div11().id(id).flex_none().h(look.row).cursor_pointer().when(this.focus === focus, (el) => el.bg(t.focus).font_weight(700)).hover((style) => style.bg(t.hover)).child(`[${on ? "x" : " "}] ${label}`).on_click((_, cx) => {
+    const focused = this.focus === focus;
+    return h_flex11().id(id).flex_none().h(look.row + 6).px(6).gap(8).items_center().cursor_pointer().rounded(2).when(focused, (el) => el.bg(t.accentSoft).font_weight(600)).hover((style) => style.bg(focused ? t.accentSoft : t.hover)).child(h_flex11().flex_none().w(16).h(16).items_center().justify_center().rounded(2).border(1).border_color(on ? t.accent : t.lineStrong).bg(on ? t.accent : t.background).text_color(t.textInverse).font_weight(700).child(on ? "✓" : "")).child(div11().text_color(t.text).child(label)).on_click((_, cx) => {
       cx.stop_propagation();
       toggle(cx);
       cx.notify();
@@ -5856,7 +5993,7 @@ class Shell {
   tabsRow(look) {
     const { t } = look;
     const active = this.host.active().id;
-    const row = h_flex12().flex_none().h(look.row).items_center().whitespace_nowrap();
+    const row = h_flex12().flex_none().w_full().px(8).gap(2).items_center().bg(t.panel).border_b(1).border_color(t.rule).whitespace_nowrap();
     const entries = [
       ...TAB_ORDER.slice(0, 3).map((tab) => ({
         id: `git-tab-${tab}`,
@@ -5878,12 +6015,9 @@ class Shell {
         onClick: (cx) => this.host.setTab("settings", cx)
       }
     ];
-    for (const [index, entry] of entries.entries()) {
-      if (index > 0)
-        row.child(div12().flex_none().w(look.cell * 2));
+    for (const entry of entries)
       row.child(tabLabel(look, entry, this.hints));
-    }
-    return row.child(div12().flex_1()).child(Button3.new("git-version").accessibility_label(`Herdr Git Mods ${VERSION}`).flex_none().h(look.row).items_center().bg(t.inert).text_color(t.hint).hover((style) => style.bg(t.hover)).child(` v${VERSION} `).on_click((_, cx) => {
+    return row.child(div12().flex_1()).child(Button3.new("git-version").accessibility_label(`Herdr Git Mods ${VERSION}`).flex_none().h(look.row + 2).px(8).items_center().bg(t.hover).border(1).border_color(t.rule).rounded(2).text_size(Math.max(10, look.size - 2)).text_color(t.hint).hover((style) => style.bg(t.accentSoft).border_color(t.accent).text_color(t.accentText)).child(`v${VERSION}`).on_click((_, cx) => {
       cx.stop_propagation();
       this.host.setTab("settings", cx);
       cx.notify();
@@ -5896,6 +6030,7 @@ class Shell {
       return {
         ...action,
         id: `git-quick-${action.id}`,
+        variant: state.primary ? "primary" : "secondary",
         enabled: state.enabled,
         running: state.running,
         onClick: (cx) => commands.quickAction(action.id, cx)
@@ -5904,13 +6039,15 @@ class Shell {
   }
   header(look) {
     const tab = this.host.active();
-    const blank = () => div12().flex_none().h(look.row);
-    const header = v_flex11().flex_none().w_full().child(this.tabsRow(look)).child(blank()).child(this.quickActions(look)).child(blank()).child(tab.toolbar ? actionBar(look, tab.toolbar(look, this.hints), this.hints) : blank());
+    const controls = v_flex11().flex_none().w_full().px(6).pt(6).gap(6).child(this.quickActions(look));
+    if (tab.toolbar)
+      controls.child(actionBar(look, tab.toolbar(look, this.hints), this.hints));
     if (tab.info) {
       const info = tab.info(look);
-      header.child(blank()).child(h_flex12().flex_none().h(look.row).overflow_hidden().whitespace_nowrap().child(info ?? div12()));
+      if (info)
+        controls.child(h_flex12().flex_none().h(look.row + 2).px(8).items_center().bg(look.t.panel).border(1).border_color(look.t.rule).overflow_hidden().whitespace_nowrap().child(info));
     }
-    return header.child(blank());
+    return v_flex11().flex_none().w_full().child(this.tabsRow(look)).child(controls);
   }
   branchLine(look, line) {
     const { t } = look;
@@ -5925,7 +6062,7 @@ class Shell {
       const budget = Math.max(0, Math.max(40, this.statusCols) - 2 - (8 + displayWidth(suffix)));
       return [
         div12().text_color(t.hint).child("Branch: "),
-        div12().text_color(t.accent).font_weight(700).child(truncateToWidth(branch, budget)),
+        div12().text_color(t.accentText).font_weight(600).child(truncateToWidth(branch, budget)),
         div12().text_color(t.hint).child(suffix)
       ];
     }
@@ -5949,21 +6086,21 @@ class Shell {
   }
   statusBar(look, line) {
     const { t } = look;
-    const separator = ` ${GLYPH.rule} `;
-    const content = h_flex12().flex_none().h(look.row).items_center().whitespace_nowrap().ml(-this.statusScroll * look.cell).child(" ").children(this.branchLine(look, line)).child(div12().text_color(t.text).child(`${separator}${line.path}${separator}`)).when(line.status.blame == null, (el) => el.child(iconCell(look, line.facts.github ? "github" : "local")).child(" ")).child(div12().text_color(t.text).child(line.status.blame ?? identityText(line.facts)));
+    const separator = () => div12().flex_none().text_color(t.rule).child(` ${GLYPH.rule} `);
+    const content = h_flex12().flex_none().h(look.row).items_center().whitespace_nowrap().ml(-this.statusScroll * look.cell).children(this.branchLine(look, line)).child(separator()).child(div12().text_color(t.secondary).child(line.path)).child(separator()).when(line.status.blame == null, (el) => el.child(iconCell(look, line.facts.github ? "github" : "local", t.hint)).child(" ")).child(div12().text_color(t.secondary).child(line.status.blame ?? identityText(line.facts)));
     const progress = line.progress ?? line.status.progress;
     if (progress)
-      content.child(separator).child(spinner(look)).child(` ${progress}`);
+      content.child(separator()).child(spinner(look)).child(div12().text_color(t.accentText).child(` ${progress}`));
     const error = line.status.error ?? line.error;
     if (error)
-      content.child(separator).child(div12().text_color(t.error).child(`Error: ${error}`));
-    return h_flex12().id("git-status-bar").flex_none().w_full().h(look.row).overflow_hidden().bg(t.inert).text_color(t.text).on_size_change((size, cx) => {
+      content.child(separator()).child(div12().text_color(t.error).child(`Error: ${error}`));
+    return h_flex12().id("git-status-bar").flex_none().w_full().h(look.row + 8).px(8).items_center().overflow_hidden().bg(t.panel).border_t(1).border_color(t.rule).text_color(t.text).on_size_change((size, cx) => {
       const columns = Math.floor(size.width / look.screenCell);
       if (columns === this.statusCols)
         return;
       this.statusCols = columns;
       cx.notify();
-    }).on_scroll_wheel((event, cx) => this.scrollStatus(event, look, cx)).child(content.child(" "));
+    }).on_scroll_wheel((event, cx) => this.scrollStatus(event, look, cx)).child(content);
   }
 }
 
@@ -7463,9 +7600,11 @@ class Commands {
   quickActionState(action) {
     const id = QUICK[action];
     const busy = this.services.busy();
+    const context = this.context();
     return {
-      enabled: action === "stash" ? this.services.repository()?.state === "ready" : unavailable(id, this.context()) === null,
-      running: busy && this.running === id ? progressLabel(id) : null
+      enabled: action === "stash" ? this.services.repository()?.state === "ready" : unavailable(id, context) === null,
+      running: busy && this.running === id ? progressLabel(id) : null,
+      primary: action === "commit" && context.staged
     };
   }
   shortcut(shortcut, cx) {
@@ -8733,10 +8872,10 @@ class FilesTab {
     const { t } = look;
     const element = h_flex15().id(`git-files-match-${offset}`).flex_none().h(look.row).min_w(0).whitespace_nowrap().overflow_hidden();
     if (row.kind === "group")
-      return element.child(div18().ml(-cols(look, this.horizontal)).text_color(t.accent).font_weight(700).child(countedTitle(row.label, row.count)));
+      return element.px(4).child(sectionLabel(look, countedTitle(row.label, row.count), { rule: true }));
     const result = this.filter.results[row.index];
     const selected = row.index === this.filter.cursor;
-    return element.when(selected, (el) => el.bg(t.focus).font_weight(700)).hover((style) => style.bg(t.hover)).child(div18().flex_none().w(cols(look, 2)).child(selected ? GLYPH.marker : "")).child(h_flex15().ml(-cols(look, this.horizontal)).child(div18().text_color(t.text).child(`  ${result?.path ?? ""}`)).when(result?.line != null, (el) => el.child(div18().text_color(t.hint).child(`:${result?.line}`)))).on_click((_, cx) => {
+    return element.border_l(2).border_color(selected ? t.accent : "#00000000").when(selected, (el) => el.bg(t.accentSoft).font_weight(600)).hover((style) => style.bg(selected ? t.accentSoft : t.hover)).child(div18().flex_none().w(cols(look, 2)).text_color(selected ? t.accentText : t.hint).child(selected ? GLYPH.marker : "")).child(h_flex15().ml(-cols(look, this.horizontal)).child(div18().text_color(t.text).child(`  ${result?.path ?? ""}`)).when(result?.line != null, (el) => el.child(div18().text_color(t.hint).child(`:${result?.line}`)))).on_click((_, cx) => {
       cx.stop_propagation();
       this.setPane("explorer");
       this.filter.cursor = row.index;
@@ -8826,10 +8965,10 @@ class FilesTab {
     if (this.active && this.root !== this.repositoryRoot())
       this.requestFiles(cx);
     this.syncBlame(cx);
-    const left = v_flex16().flex_1().min_h(0).min_w(0).child(v_flex16().flex_1().min_h(0).child(this.applied() ? this.resultsBox(look) : this.treeBox(look))).child(v_flex16().flex_1().min_h(0).child(this.workspaces.render(look).flex_1()));
+    const left = v_flex16().flex_1().min_h(0).min_w(0).gap(6).child(v_flex16().flex_1().min_h(0).child(this.applied() ? this.resultsBox(look) : this.treeBox(look))).child(v_flex16().flex_1().min_h(0).child(this.workspaces.render(look).flex_1()));
     const preview = v_flex16().min_h(0).min_w(0).child(this.previewBox(look));
-    const panes = size.wide ? h_flex15().flex_1().min_h(0).items_stretch().child(left.flex_none().w(`${35}%`)).child(preview.flex_1().h_full()) : v_flex16().flex_1().min_h(0).child(left.h(`${50}%`).flex_none()).child(preview.flex_1());
-    return v_flex16().size_full().min_h(0).min_w(0).child(div18().flex_none().h(rows(look, 3)).on_key_down((event, cx) => this.filterInputKey(event, cx)).on_mouse_down("left", (_, cx) => {
+    const panes = size.wide ? h_flex15().flex_1().min_h(0).gap(6).items_stretch().child(left.flex_none().w(`${35}%`)).child(preview.flex_1().h_full()) : v_flex16().flex_1().min_h(0).gap(6).child(left.h(`${50}%`).flex_none()).child(preview.flex_1());
+    return v_flex16().size_full().min_h(0).min_w(0).gap(6).child(div18().flex_none().on_key_down((event, cx) => this.filterInputKey(event, cx)).on_mouse_down("left", (_, cx) => {
       this.openFilter();
       cx.notify();
     }).child(filterBar(look, { id: "git-files-filter", input: this.query, active: this.filtering }))).child(panes);
@@ -9321,7 +9460,8 @@ class Inspect {
     const change = line.change;
     if (change === undefined)
       return row;
-    return row.when(this.focus === "details" && this.selected === change, (el) => el.bg(look.t.focus).font_weight(700)).hover((style) => style.bg(look.t.hover)).on_click((_, cx) => {
+    const active = this.focus === "details" && this.selected === change;
+    return row.border_l(2).border_color(active ? look.t.accent : "#00000000").when(active, (el) => el.bg(look.t.accentSoft).font_weight(600)).hover((style) => style.bg(active ? look.t.accentSoft : look.t.hover)).on_click((_, cx) => {
       cx.stop_propagation();
       this.toggle(change, cx);
       onFocus(cx);
@@ -9350,7 +9490,8 @@ class Inspect {
     return (vertical ? v_flex17() : h_flex16()).flex_1().min_h(0).min_w(0).items_stretch().child(pane("git-commit-preview-before", "Before", panes.before)).child(pane("git-commit-preview-after", "After", panes.after));
   }
   renderPreview(look, size, onFocus) {
-    const close = h_flex16().id("git-commit-preview-close").absolute().top(0).right(look.cell * 1).h(look.row).text_color(look.t.hint).hover((style) => style.bg(look.t.hover)).child("[×]").on_click((_, cx) => {
+    const { t } = look;
+    const close = h_flex16().id("git-commit-preview-close").absolute().top(4).right(8).h(look.row).px(6).items_center().rounded(2).text_color(t.hint).hover((style) => style.bg(t.accentSoft).text_color(t.text)).child("×").on_click((_, cx) => {
       cx.stop_propagation();
       this.closePreview();
       cx.notify();
@@ -9590,12 +9731,12 @@ function graphViewWidth(width) {
 }
 function badgeStyle(kind, t) {
   const styles = {
-    head: { symbol: "●", bg: t.badgeHead },
-    local: { icon: "branch", bg: t.badgeLocal },
-    remote: { icon: "remote", bg: t.badgeRemote },
-    "remote-head": { icon: "remote", bg: t.badgeRemoteHead },
-    tag: { icon: "tag", bg: t.badgeTag },
-    other: { symbol: "◆", bg: t.badgeOther }
+    head: { symbol: "●", bg: t.badgeHead, border: t.badgeHeadBorder, color: t.error },
+    local: { icon: "branch", bg: t.badgeLocal, border: t.badgeLocalBorder, color: t.success },
+    remote: { icon: "remote", bg: t.badgeRemote, border: t.badgeRemoteBorder, color: t.info },
+    "remote-head": { icon: "remote", bg: t.badgeRemoteHead, border: t.badgeRemoteHeadBorder, color: t.azure },
+    tag: { icon: "tag", bg: t.badgeTag, border: t.badgeTagBorder, color: t.warning },
+    other: { symbol: "◆", bg: t.badgeOther, border: t.badgeOtherBorder, color: t.accentText }
   };
   return styles[kind];
 }
@@ -9605,7 +9746,7 @@ function badgeSpans(references, width, t) {
   for (const reference of references) {
     const separator = spans.length ? 1 : 0;
     const available = remaining - separator;
-    const { icon, symbol, bg } = badgeStyle(reference.kind, t);
+    const { icon, symbol, bg, border, color } = badgeStyle(reference.kind, t);
     const fixed = (icon ? ICON_CELLS : 1) + 3;
     if (available <= fixed)
       break;
@@ -9616,9 +9757,9 @@ function badgeSpans(references, width, t) {
       remaining -= 1;
     }
     if (icon)
-      spans.push({ text: " ", bg }, { text: ` ${name} `, icon, bg });
+      spans.push({ text: ` ${name} `, icon, bg, border, color });
     else
-      spans.push({ text: ` ${symbol} ${name} `, bg });
+      spans.push({ text: ` ${symbol} ${name} `, bg, border, color });
     remaining -= badgeWidth;
   }
   if (spans.length)
@@ -9665,7 +9806,7 @@ function commitDetail(look, commit, text) {
     return line(look, [{ text: truncateToWidth("Working tree", textWidth), color: look.t.muted }], null, false);
   const sha = truncateToWidth(shortCommit(commit.sha), textWidth);
   const author = truncateToWidth(commit.authorName, Math.max(0, textWidth - displayWidth(sha) - 2));
-  return line(look, [{ text: sha, color: look.t.accent }], author ? { text: author, color: look.t.secondary } : null, false);
+  return line(look, [{ text: sha, color: look.t.accentText }], author ? { text: author, color: look.t.secondary } : null, false);
 }
 
 // src/ui/graph.ts
@@ -9673,8 +9814,8 @@ var GRAPH_ACTIONS = [
   { id: "checkout", label: "Checkout", shortcut: "x", icon: "checkout" },
   { id: "rebase", label: "Rebase", shortcut: "r", icon: "rebase" },
   { id: "cherry-pick", label: "Cherry-pick", shortcut: "y", icon: "cherryPick" },
-  { id: "revert", label: "Revert", shortcut: "v", icon: "revert" },
-  { id: "reset", label: "Reset", shortcut: "t", icon: "reset" },
+  { id: "revert", label: "Revert", shortcut: "v", icon: "revert", variant: "danger" },
+  { id: "reset", label: "Reset", shortcut: "t", icon: "reset", variant: "danger" },
   { id: "copy-sha", label: "Copy SHA", shortcut: "h", icon: "copy" }
 ];
 var REVEAL_LIMIT = 1e4;
@@ -10338,10 +10479,11 @@ class GraphTab {
     return title;
   }
   footer(look) {
+    const { t } = look;
     const text = this.historyError ? "Refresh to retry" : this.state.hasMore ? "[PgDn] Load more" : "";
     if (!text)
       return null;
-    return div22().id("git-graph-load-more").absolute().bottom(0).left(look.cell).h(look.row).bg(look.t.background).text_color(look.t.hint).whitespace_nowrap().child(text).on_click((_, cx) => {
+    return h_flex19().id("git-graph-load-more").absolute().bottom(4).right(12).h(look.row + 2).px(8).items_center().bg(t.hover).border(1).border_color(t.lineStrong).rounded(2).text_size(Math.max(10, look.size - 2)).text_color(this.historyError ? t.error : t.accentText).hover((style) => style.bg(t.accentSoft).border_color(t.accent)).whitespace_nowrap().child(text).on_click((_, cx) => {
       cx.stop_propagation();
       if (this.historyError)
         return;
@@ -10370,9 +10512,9 @@ class GraphTab {
       total: this.graphWidth,
       first,
       selected,
-      background: selected ? t.selection : t.background
+      background: selected ? t.panelFocus : t.panel
     };
-    const element = h_flex19().id(`git-commit-row-${row}`).flex_none().h(rows(look, ROW_HEIGHT)).min_w(0).overflow_hidden().when(selected, (el) => el.bg(t.selection)).when(!selected, (el) => el.hover((style) => style.bg(t.hover))).on_click((_, cx) => {
+    const element = h_flex19().id(`git-commit-row-${row}`).flex_none().h(rows(look, ROW_HEIGHT)).min_w(0).overflow_hidden().border_l(2).border_color(selected ? t.accent : "#00000000").when(selected, (el) => el.bg(t.accentSoft)).when(!selected, (el) => el.hover((style) => style.bg(t.hover))).on_click((_, cx) => {
       cx.stop_propagation();
       this.clickRow(row, cx);
     }).on_mouse_down("right", (_, cx) => {
@@ -10439,15 +10581,15 @@ class GraphTab {
       return h_flex19().h(rows(look, height)).flex_none().items_stretch().child(pane.flex_1());
     }
     const [first, second, third] = paneWidths(size.cols);
-    const row = h_flex19().h(rows(look, height)).flex_none().child(this.workspaces.render(look).w(cols(look, first)).flex_none().h_full());
+    const row = h_flex19().h(rows(look, height)).flex_none().gap(6).child(this.workspaces.render(look).w(cols(look, first)).flex_none().h_full());
     if (!preview)
       return row.child(this.inspect.renderDetails(look, onFocus).flex_1().h_full());
     return row.child(this.inspect.renderDetails(look, onFocus).w(cols(look, second)).flex_none().h_full()).child(this.inspect.renderPreview(look, { cols: third, rows: height }, onFocus).flex_1().h_full());
   }
   render(look, size) {
-    const available = Math.max(0, size.rows - 3);
+    const available = Math.max(0, size.rows - 2);
     const listRows = Math.round(available * 58 / 100);
-    return v_flex19().id("git-graph").size_full().min_h(0).min_w(0).track_focus(this.handle).on_key_down((event, cx) => this.key(event, cx)).child(filterBar(look, { id: "git-graph-filter", input: this.filter, active: this.filtering })).child(this.commitsBox(look).h(rows(look, listRows)).flex_none()).child(this.lower(look, { cols: size.cols, rows: available - listRows }));
+    return v_flex19().id("git-graph").size_full().min_h(0).min_w(0).gap(6).track_focus(this.handle).on_key_down((event, cx) => this.key(event, cx)).child(filterBar(look, { id: "git-graph-filter", input: this.filter, active: this.filtering })).child(this.commitsBox(look).h(rows(look, listRows)).flex_none()).child(this.lower(look, { cols: size.cols, rows: available - listRows }).flex_1());
   }
 }
 
@@ -10455,7 +10597,6 @@ class GraphTab {
 import { h_flex as h_flex20, InputState as InputState5, v_flex as v_flex20 } from "gpui-base";
 import { div as div23 } from "gpui-kit";
 var PICKER_ROWS = 20;
-var FIELD_ROWS = 3;
 function toneColor(look, tone) {
   const { t } = look;
   const colors = {
@@ -10627,7 +10768,8 @@ class Overlay {
     const [input] = this.inputs;
     if (!input)
       return null;
-    return box(look, { id: "git-dialog-search", title: "Search" }, h_flex20().h(look.row).child(textInput(look, input)));
+    const { t } = look;
+    return h_flex20().id("git-dialog-search").flex_none().h(look.row + 8).px(8).gap(6).items_center().bg(t.background).border(1).border_color(t.accent).rounded(2).child(div23().flex_none().text_color(t.accentText).font_weight(600).child("/")).child(textInput(look, input));
   }
   picker(look, spec) {
     const { t } = look;
@@ -10636,12 +10778,12 @@ class Overlay {
     const columns = spec.columns;
     const query = this.query();
     const footer = typeof spec.footer === "function" ? spec.footer(query, all.length) : spec.footer ?? "";
-    const body = v_flex20().min_w(0);
+    const body = v_flex20().min_w(0).gap(6);
     const search = this.searchBox(look);
     if (search)
       body.child(search);
     if (columns)
-      body.child(div23().flex_none().h(look.row).bg(t.header).text_color(t.accent).font_weight(700).whitespace_nowrap().child(`  ${padToWidth(columns.label, columns.width)}${columns.status}`));
+      body.child(h_flex20().flex_none().h(look.row + 4).px(4).items_center().bg(t.background).border_b(1).border_color(t.rule).text_size(Math.max(10, look.size - 2)).text_color(t.hint).font_weight(600).whitespace_nowrap().child(`  ${padToWidth(columns.label.toUpperCase(), columns.width)}${columns.status.toUpperCase()}`));
     body.child(v_flex20().h(rows(look, visible)).flex_none().child(this.list.render(look, {
       length: all.length,
       focused: true,
@@ -10657,14 +10799,15 @@ class Overlay {
     return body.child(this.hint(look, footer)).child(this.footer(look, spec.primary ?? "[Enter] Run", spec.secondary ?? "[Esc] Cancel"));
   }
   confirmBody(look, spec) {
-    return v_flex20().min_w(0).child(lines2(look, spec.lines)).child(this.hint(look, spec.hint ?? "")).child(this.footer(look, spec.primary ?? "[Enter] Run", spec.secondary ?? "[Esc] Cancel"));
+    return v_flex20().min_w(0).gap(6).child(lines2(look, spec.lines)).child(this.hint(look, spec.hint ?? "")).child(this.footer(look, spec.primary ?? "[Enter] Run", spec.secondary ?? "[Esc] Cancel"));
   }
   form(look, spec) {
-    const body = v_flex20().min_w(0).child(lines2(look, spec.lines ?? []));
+    const { t } = look;
+    const body = v_flex20().min_w(0).gap(6).child(lines2(look, spec.lines ?? []));
     for (const [index, field] of spec.fields.entries()) {
       const input = this.inputs[index];
       if (input)
-        body.child(box(look, { id: `git-dialog-field-${index}`, title: field.label }, h_flex20().h(look.row).child(textInput(look, input))).h(rows(look, FIELD_ROWS)).flex_none());
+        body.child(v_flex20().id(`git-dialog-field-${index}`).flex_none().gap(4).child(div23().text_size(Math.max(10, look.size - 2)).font_weight(600).text_color(t.secondary).child(field.label.toUpperCase())).child(h_flex20().h(look.row + 8).px(8).items_center().bg(t.background).border(1).border_color(t.lineStrong).rounded(2).child(textInput(look, input))));
     }
     return body.child(this.hint(look, spec.hint ?? "")).child(this.footer(look, spec.primary ?? "[Enter] Save", spec.secondary ?? "[Esc] Cancel"));
   }
@@ -10681,10 +10824,10 @@ class Overlay {
     const spec = this.spec;
     if (!spec)
       return null;
-    const title = typeof spec.title === "string" ? spec.title : div23().text_color(toneColor(look, spec.title.tone)).font_weight(700).child(spec.title.text);
+    const title = typeof spec.title === "string" ? spec.title : div23().text_size(Math.max(10, look.size - 2)).text_color(toneColor(look, spec.title.tone)).font_weight(600).child(spec.title.text.toUpperCase());
     const width = spec.width ?? (spec.kind === "picker" ? DIALOG.wide : DIALOG.medium);
     const frame = dialogFrame(look, { id: "git-dialog", title, width }, this.body(look, spec)).track_focus(this.handle).on_key_down((event, cx) => this.key(event, cx));
-    return v_flex20().id("git-dialog-layer").absolute().inset_0().items_center().justify_center().on_mouse_down("left", (_, cx) => cx.stop_propagation()).child(frame);
+    return v_flex20().id("git-dialog-layer").absolute().inset_0().p(16).bg(look.t.scrim).items_center().justify_center().on_mouse_down("left", (_, cx) => cx.stop_propagation()).child(frame);
   }
 }
 
@@ -10692,6 +10835,26 @@ class Overlay {
 import { h_flex as h_flex21, v_flex as v_flex21 } from "gpui-base";
 import { div as div24 } from "gpui-kit";
 var LABEL_WIDTH = 24;
+var THEME_OPTIONS = [
+  { mode: "auto", label: "Auto", description: "Follows Herdr dark or light theme" },
+  { mode: "void", label: "Void", description: "Deepfield dark cockpit palette" },
+  { mode: "frost", label: "Frost", description: "Deepfield daylight palette" }
+];
+function themeOption(mode) {
+  return THEME_OPTIONS.find((option) => option.mode === mode) ?? THEME_OPTIONS[0];
+}
+function switchControl(look, on) {
+  const { t } = look;
+  return h_flex21().flex_none().items_center().gap(8).child(div24().relative().flex_none().w(36).h(18).rounded_full().bg(on ? t.accent : t.background).border(1).border_color(on ? t.accent : t.lineStrong).child(div24().absolute().top(2).left(on ? 20 : 2).w(12).h(12).rounded_full().bg(on ? t.textInverse : t.secondary))).child(div24().flex_none().w(28).text_size(Math.max(10, look.size - 2)).font_weight(600).text_color(on ? t.accentText : t.hint).child(on ? "ON" : "OFF"));
+}
+function selectControl(look, text, open) {
+  const { t } = look;
+  return h_flex21().flex_none().h(look.row + 4).px(8).gap(8).items_center().bg(open ? t.accentSoft : t.background).border(1).border_color(open ? t.accent : t.lineStrong).rounded(2).text_size(Math.max(10, look.size - 2)).font_weight(600).text_color(t.text).child(text.toUpperCase()).child(div24().text_color(open ? t.accentText : t.hint).child(open ? "▴" : "▾"));
+}
+function actionControl(look, text) {
+  const { t } = look;
+  return h_flex21().flex_none().h(look.row + 4).px(8).items_center().bg(t.background).border(1).border_color(t.lineStrong).rounded(2).text_size(Math.max(10, look.size - 2)).font_weight(600).text_color(t.accentText).child(text);
+}
 
 class SettingsTab {
   checkUpdates;
@@ -10700,6 +10863,8 @@ class SettingsTab {
   graph;
   autoRefresh;
   selected = 0;
+  themeOpen = false;
+  themeCursor = 0;
   handle;
   constructor(cx, checkUpdates, updateStatus) {
     this.checkUpdates = checkUpdates;
@@ -10711,23 +10876,45 @@ class SettingsTab {
   activate() {
     this.handle.focus();
   }
-  deactivate() {}
+  deactivate() {
+    this.themeOpen = false;
+  }
   focus() {
     this.handle.focus();
+  }
+  escape() {
+    if (!this.themeOpen)
+      return false;
+    this.themeOpen = false;
+    return true;
   }
   release() {
     this.handle.release();
   }
+  toggleThemeMenu() {
+    this.themeOpen = !this.themeOpen;
+    if (this.themeOpen) {
+      const index = THEME_OPTIONS.findIndex((option) => option.mode === themeMode());
+      this.themeCursor = Math.max(0, index);
+    }
+  }
+  chooseTheme(mode) {
+    setThemeMode(mode);
+    this.themeOpen = false;
+  }
   rows() {
+    const current = themeOption(themeMode());
     return [
       {
         id: "graph",
         label: "Native graph",
-        control: this.graph ? " On  " : " Off ",
+        kind: "switch",
+        control: this.graph ? "ON" : "OFF",
         on: this.graph,
         status: this.graph ? "Native curves in Graph" : "Box-drawing characters in use",
         description: "Antialiased graph curves and commit rules drawn natively; off draws lanes with box-drawing characters",
         activate: () => {
+          this.themeOpen = false;
           this.graph = !this.graph;
           localStorage.setItem("git-graph", this.graph ? "on" : "off");
         }
@@ -10735,27 +10922,66 @@ class SettingsTab {
       {
         id: "refresh",
         label: "Background refresh",
-        control: this.autoRefresh ? " On  " : " Off ",
+        kind: "switch",
+        control: this.autoRefresh ? "ON" : "OFF",
         on: this.autoRefresh,
         status: this.autoRefresh ? "Watching the repository" : "Refresh from Commands",
         description: "Reloads status when files change and every 10 seconds",
         activate: () => {
+          this.themeOpen = false;
           this.autoRefresh = !this.autoRefresh;
           localStorage.setItem("git-auto-refresh", this.autoRefresh ? "on" : "off");
         }
       },
       {
+        id: "theme",
+        label: "Theme",
+        kind: "select",
+        control: current?.label ?? "Auto",
+        on: this.themeOpen,
+        status: current?.description ?? "",
+        description: "Select Auto (follows Herdr), Void (dark), or Frost (light)",
+        activate: () => this.toggleThemeMenu()
+      },
+      {
         id: "versions",
         label: "Versions",
-        control: " [Enter] Check ",
+        kind: "action",
+        control: "[Enter] Check",
         on: false,
         status: this.updateStatus() ?? `Current version v${VERSION}`,
         description: "Check GitHub Releases for a Git mod update",
-        activate: this.checkUpdates
+        activate: (cx) => {
+          this.themeOpen = false;
+          this.checkUpdates(cx);
+        }
       }
     ];
   }
+  themeKey(keystroke) {
+    const last = THEME_OPTIONS.length - 1;
+    const moves = { up: -1, k: -1, down: 1, j: 1, home: -last, end: last };
+    const move = moves[keystroke];
+    if (move !== undefined)
+      this.themeCursor = Math.max(0, Math.min(last, this.themeCursor + move));
+    else if (keystroke === "enter" || keystroke === "space") {
+      const option = THEME_OPTIONS[this.themeCursor];
+      if (option)
+        this.chooseTheme(option.mode);
+    } else if (keystroke === "escape")
+      this.themeOpen = false;
+    else
+      return false;
+    return true;
+  }
   key(event, cx) {
+    if (this.themeOpen) {
+      if (!this.themeKey(event.keystroke))
+        return;
+      cx.stop_propagation();
+      cx.notify();
+      return;
+    }
     const rows = this.rows();
     const last = rows.length - 1;
     const moves = { up: -1, k: -1, down: 1, j: 1, home: -last, end: last };
@@ -10769,16 +10995,45 @@ class SettingsTab {
     cx.stop_propagation();
     cx.notify();
   }
+  themeDropdown(look) {
+    const { t } = look;
+    const current = themeMode();
+    const menu = v_flex21().id("git-theme-dropdown").mt(4).bg(t.panel).border(1).border_color(t.lineStrong).rounded(2).shadow_md().overflow_hidden();
+    for (const [index, option] of THEME_OPTIONS.entries()) {
+      const focused = index === this.themeCursor;
+      const chosen = option.mode === current;
+      menu.child(h_flex21().id(`git-theme-option-${option.mode}`).h(look.row + 8).px(10).gap(10).items_center().cursor_pointer().border_l(2).border_color(focused ? t.accent : "#00000000").when(index > 0, (el) => el.border_t(1).border_color(t.rule)).when(focused, (el) => el.bg(t.accentSoft)).when(!focused, (el) => el.hover((style) => style.bg(t.hover))).child(div24().flex_none().w(14).text_color(t.accentText).font_weight(700).child(chosen ? "✓" : "")).child(div24().flex_none().w(64).text_size(Math.max(10, look.size - 1)).font_weight(chosen || focused ? 600 : 400).text_color(chosen || focused ? t.accentText : t.text).child(option.label.toUpperCase())).child(div24().flex_1().truncate().text_color(t.secondary).child(option.description)).on_click((_, cx) => {
+        cx.stop_propagation();
+        this.themeCursor = index;
+        this.handle.focus();
+        this.chooseTheme(option.mode);
+        cx.notify();
+      }));
+    }
+    return menu;
+  }
+  rowControl(look, row) {
+    if (row.kind === "switch")
+      return switchControl(look, row.on);
+    if (row.kind === "select")
+      return selectControl(look, row.control, row.on);
+    return actionControl(look, row.control);
+  }
   render(look) {
     const { t } = look;
-    const body = v_flex21().pt(look.row).gap(look.row);
-    for (const [index, row] of this.rows().entries())
-      body.child(v_flex21().id(`git-setting-${row.id}`).when(index === this.selected, (el) => el.bg(t.selection)).hover((style) => style.bg(index === this.selected ? t.selection : t.hover)).on_click((_, cx) => {
+    const body = v_flex21().p(8).gap(8);
+    for (const [index, row] of this.rows().entries()) {
+      const active = index === this.selected;
+      const card = v_flex21().id(`git-setting-${row.id}`).p(8).gap(4).border(1).border_l(2).border_color(active ? t.accent : t.rule).when(active, (el) => el.bg(t.accentSoft)).when(!active, (el) => el.bg(t.background).hover((style) => style.bg(t.hover))).on_click((_, cx) => {
         this.selected = index;
         this.handle.focus();
         row.activate(cx);
         cx.notify();
-      }).child(h_flex21().h(look.row).whitespace_nowrap().child(div24().font_weight(700).child(padToWidth(`  ${row.label}`, LABEL_WIDTH))).child(div24().when(row.on, (el) => el.bg(t.accent).text_color(t.textInverse).font_weight(700)).when(!row.on, (el) => el.bg(t.inert).text_color(t.hint)).child(row.control)).child(div24().text_color(t.hint).child(`  ${row.status}`))).child(div24().h(look.row).truncate().text_color(t.secondary).child(`${" ".repeat(LABEL_WIDTH)}${row.description}`)));
+      }).child(h_flex21().h(look.row + 4).items_center().gap(8).whitespace_nowrap().child(div24().font_weight(600).text_color(t.text).child(padToWidth(row.label, LABEL_WIDTH))).child(this.rowControl(look, row)).child(div24().text_color(t.secondary).child(row.status))).child(div24().h(look.row).truncate().text_color(t.hint).child(`${" ".repeat(LABEL_WIDTH)}${row.description}`));
+      if (row.kind === "select" && this.themeOpen)
+        card.child(this.themeDropdown(look));
+      body.child(card);
+    }
     return box(look, { id: "git-settings", title: "Settings", focused: this.handle.is_focused() }, body).size_full().track_focus(this.handle).on_key_down((event, cx) => this.key(event, cx));
   }
 }
@@ -11097,11 +11352,13 @@ class ProjectRegistry {
 }
 
 // src/ui/workspaces.ts
-var CURRENT_TOP = 2;
-var SEPARATOR = 5;
+var CURRENT_TOP = 1.4;
+var SEPARATOR = 5.3;
 var PROJECTS_HEADER = 6;
-var PROJECTS_TOP = 8;
-var GROUP_GAP = 1;
+var PROJECTS_TOP = 8.4;
+var CARD_PAD = 0.5;
+var ITEM_GAP = 0.3;
+var GROUP_GAP = 0.55;
 var ADD_WIDE = 34;
 var DEFAULT_WIDTH = 40;
 var BUSY = "Wait for the current Git operation.";
@@ -11434,7 +11691,7 @@ class WorkspacesBox {
     const placed = [];
     const [first] = this.rows;
     if (first)
-      placed.push({ index: 0, top: CURRENT_TOP, height: rowHeight(first) });
+      placed.push({ index: 0, top: CURRENT_TOP, height: rowHeight(first) + CARD_PAD });
     let next = PROJECTS_TOP;
     let grouped = false;
     for (const [index, row] of this.rows.entries()) {
@@ -11444,9 +11701,12 @@ class WorkspacesBox {
         if (grouped)
           next += GROUP_GAP;
         grouped = true;
+      } else {
+        next += ITEM_GAP;
       }
-      placed.push({ index, top: next, height: rowHeight(row) });
-      next += rowHeight(row);
+      const height = rowHeight(row) + CARD_PAD;
+      placed.push({ index, top: next, height });
+      next += height;
     }
     return { placed, content: Math.max(next, PROJECTS_TOP) };
   }
@@ -11552,7 +11812,7 @@ class WorkspacesBox {
       return div26();
     const focusedRow = focused && entry.index === this.selected;
     const index = entry.index;
-    const element = div26().id(`git-workspace-row-${index}`).absolute().left(0).right(0).top(rows(look, entry.top - this.scroll)).h(rows(look, entry.height)).flex().flex_col().overflow_hidden().bg(focusedRow ? t.focus : t.panel).when(focusedRow, (el) => el.font_weight(700)).when(!focusedRow, (el) => el.hover((style) => style.bg(t.hover))).on_hover((hovered, cx) => {
+    const element = div26().id(`git-workspace-row-${index}`).absolute().left(0).right(0).top(rows(look, entry.top - this.scroll)).h(rows(look, entry.height)).flex().flex_col().justify_center().overflow_hidden().px(8).bg(focusedRow ? t.accentSoft : t.background).border(1).border_color(focusedRow ? t.accentEdge : t.rule).when(focusedRow, (el) => el.font_weight(600)).when(!focusedRow, (el) => el.hover((style) => style.bg(t.hover))).on_hover((hovered, cx) => {
       if (hovered)
         this.hovered = index;
       else if (this.hovered === index)
@@ -11564,15 +11824,19 @@ class WorkspacesBox {
       cx.notify();
     }).child(this.nameLine(look, row, focusedRow, index)).child(this.summaryLine(look, row));
     const upstream = this.upstreamLine(look, row);
-    return upstream ? element.child(upstream) : element;
+    if (upstream)
+      element.child(upstream);
+    if (focusedRow)
+      element.child(div26().absolute().bottom(0).left(0).right(0).h(2).bg(t.accent));
+    return element;
   }
   header(look, top, child) {
-    return div26().absolute().left(0).right(0).top(rows(look, top - this.scroll)).h(look.row).child(child);
+    return div26().absolute().left(0).right(0).top(rows(look, top - this.scroll)).h(look.row).flex().items_center().child(child);
   }
   addButton(look) {
     const { t } = look;
     const wide = this.width >= ADD_WIDE;
-    return Button4.new("git-workspace-add").accessibility_label("Add Project").flex_none().h(look.row).text_color(t.accent).font_weight(700).hover((style) => style.bg(t.hover)).child(wide ? "[ Add Project ]" : "[+]").on_click((_, cx) => {
+    return Button4.new("git-workspace-add").accessibility_label("Add Project").flex_none().h(look.row).px(6).items_center().border(1).border_color(t.lineStrong).rounded(2).text_size(Math.max(10, look.size - 2)).text_color(t.accentText).font_weight(600).hover((style) => style.bg(t.accentSoft).border_color(t.accent)).child(wide ? "+ ADD PROJECT" : "+").on_click((_, cx) => {
       cx.stop_propagation();
       this.add(cx);
       cx.notify();
@@ -11580,18 +11844,17 @@ class WorkspacesBox {
   }
   sections(look) {
     const { t } = look;
-    const heading = (text) => div26().text_color(t.accent).font_weight(700).child(text);
     const wide = this.width >= ADD_WIDE;
-    const projects = h_flex23().w_full().justify_between().child(heading("Projects"));
+    const projects = h_flex23().w_full().items_center().gap(6).child(sectionLabel(look, "Projects", { rule: true }));
     if (wide)
       projects.child(this.addButton(look));
     const children = [
-      this.header(look, 0, heading("Current")),
-      this.header(look, SEPARATOR, div26().text_color(t.rule).overflow_hidden().whitespace_nowrap().child("─".repeat(Math.max(1, this.width)))),
+      this.header(look, 0, sectionLabel(look, "Current", { rule: true })),
+      this.header(look, SEPARATOR, div26().w_full().h(1).bg(t.rule)),
       this.header(look, PROJECTS_HEADER, projects)
     ];
     if (!wide)
-      children.push(this.header(look, PROJECTS_HEADER + 1, h_flex23().justify_end().child(this.addButton(look))));
+      children.push(this.header(look, PROJECTS_HEADER + 1, h_flex23().w_full().justify_end().child(this.addButton(look))));
     return children;
   }
   render(look) {
@@ -11604,7 +11867,7 @@ class WorkspacesBox {
     this.page = Math.max(1, visible.length);
     const body = div26().id("git-workspaces-list").relative().flex_1().min_h(0).min_w(0).overflow_hidden().on_size_change((size, cx) => {
       const rows = Math.max(1, Math.floor(size.height / look.screenRow));
-      const width = Math.max(1, Math.floor(size.width / look.screenCell));
+      const width = Math.max(1, Math.floor((size.width - 18) / look.screenCell));
       if (rows === this.height && width === this.width)
         return;
       this.height = rows;
@@ -11917,7 +12180,7 @@ class Session {
     const tab = this.tabs[this.tab];
     const repository = this.repository;
     const path = repository?.state === "ready" ? repository.root : this.source.current()?.cwd ?? "";
-    const root = v_flex23().id("git").relative().size_full().min_h(0).bg(view.t.background).text_color(view.t.text).font_family(view.font).text_size(view.size).line_height(`${view.row}px`).child(this.shell.header(view)).child(v_flex23().id("git-body").flex_1().min_h(0).min_w(0).overflow_hidden().on_size_change((size, cx) => {
+    const root = v_flex23().id("git").relative().size_full().min_h(0).bg(view.t.background).text_color(view.t.text).font_family(view.font).text_size(view.size).line_height(`${view.row}px`).child(this.shell.header(view)).child(v_flex23().id("git-body").flex_1().min_h(0).min_w(0).p(6).overflow_hidden().on_size_change((size, cx) => {
       const cols = Math.floor(size.width / view.screenCell);
       const rows = Math.floor(size.height / view.screenRow);
       if (cols === this.body.cols && rows === this.body.rows)

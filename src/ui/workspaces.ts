@@ -22,6 +22,7 @@ import {
   displayWidth,
   isChord,
   padToWidth,
+  sectionLabel,
   spanElements,
   spansWidth,
   spinner,
@@ -40,11 +41,13 @@ import {
   worktreeLabel,
 } from "./workspaces/rows.ts";
 
-const CURRENT_TOP = 2;
-const SEPARATOR = 5;
+const CURRENT_TOP = 1.4;
+const SEPARATOR = 5.3;
 const PROJECTS_HEADER = 6;
-const PROJECTS_TOP = 8;
-const GROUP_GAP = 1;
+const PROJECTS_TOP = 8.4;
+const CARD_PAD = 0.5;
+const ITEM_GAP = 0.3;
+const GROUP_GAP = 0.55;
 const ADD_WIDE = 34;
 const DEFAULT_WIDTH = 40;
 const BUSY = "Wait for the current Git operation.";
@@ -439,7 +442,7 @@ export class WorkspacesBox {
   private layout(): { placed: Placed[]; content: number } {
     const placed: Placed[] = [];
     const [first] = this.rows;
-    if (first) placed.push({ index: 0, top: CURRENT_TOP, height: rowHeight(first) });
+    if (first) placed.push({ index: 0, top: CURRENT_TOP, height: rowHeight(first) + CARD_PAD });
     let next = PROJECTS_TOP;
     let grouped = false;
     for (const [index, row] of this.rows.entries()) {
@@ -447,9 +450,12 @@ export class WorkspacesBox {
       if (row.kind.type === "project") {
         if (grouped) next += GROUP_GAP;
         grouped = true;
+      } else {
+        next += ITEM_GAP;
       }
-      placed.push({ index, top: next, height: rowHeight(row) });
-      next += rowHeight(row);
+      const height = rowHeight(row) + CARD_PAD;
+      placed.push({ index, top: next, height });
+      next += height;
     }
     return { placed, content: Math.max(next, PROJECTS_TOP) };
   }
@@ -572,9 +578,13 @@ export class WorkspacesBox {
       .h(rowsPx(look, entry.height))
       .flex()
       .flex_col()
+      .justify_center()
       .overflow_hidden()
-      .bg(focusedRow ? t.focus : t.panel)
-      .when(focusedRow, (el) => el.font_weight(700))
+      .px(8)
+      .bg(focusedRow ? t.accentSoft : t.background)
+      .border(1)
+      .border_color(focusedRow ? t.accentEdge : t.rule)
+      .when(focusedRow, (el) => el.font_weight(600))
       .when(!focusedRow, (el) => el.hover((style) => style.bg(t.hover)))
       .on_hover((hovered, cx) => {
         if (hovered) this.hovered = index;
@@ -589,7 +599,9 @@ export class WorkspacesBox {
       .child(this.nameLine(look, row, focusedRow, index))
       .child(this.summaryLine(look, row));
     const upstream = this.upstreamLine(look, row);
-    return upstream ? element.child(upstream) : element;
+    if (upstream) element.child(upstream);
+    if (focusedRow) element.child(div().absolute().bottom(0).left(0).right(0).h(2).bg(t.accent));
+    return element;
   }
 
   private header(look: Look, top: number, child: Element): Element {
@@ -599,6 +611,8 @@ export class WorkspacesBox {
       .right(0)
       .top(rowsPx(look, top - this.scroll))
       .h(look.row)
+      .flex()
+      .items_center()
       .child(child);
   }
 
@@ -609,10 +623,16 @@ export class WorkspacesBox {
       .accessibility_label("Add Project")
       .flex_none()
       .h(look.row)
-      .text_color(t.accent)
-      .font_weight(700)
-      .hover((style) => style.bg(t.hover))
-      .child(wide ? "[ Add Project ]" : "[+]")
+      .px(6)
+      .items_center()
+      .border(1)
+      .border_color(t.lineStrong)
+      .rounded(2)
+      .text_size(Math.max(10, look.size - 2))
+      .text_color(t.accentText)
+      .font_weight(600)
+      .hover((style) => style.bg(t.accentSoft).border_color(t.accent))
+      .child(wide ? "+ ADD PROJECT" : "+")
       .on_click((_, cx) => {
         cx.stop_propagation();
         this.add(cx);
@@ -622,25 +642,22 @@ export class WorkspacesBox {
 
   private sections(look: Look): Element[] {
     const { t } = look;
-    const heading = (text: string) => div().text_color(t.accent).font_weight(700).child(text);
     const wide = this.width >= ADD_WIDE;
-    const projects = h_flex().w_full().justify_between().child(heading("Projects"));
+    const projects = h_flex()
+      .w_full()
+      .items_center()
+      .gap(6)
+      .child(sectionLabel(look, "Projects", { rule: true }));
     if (wide) projects.child(this.addButton(look));
     const children = [
-      this.header(look, 0, heading("Current")),
-      this.header(
-        look,
-        SEPARATOR,
-        div()
-          .text_color(t.rule)
-          .overflow_hidden()
-          .whitespace_nowrap()
-          .child("─".repeat(Math.max(1, this.width))),
-      ),
+      this.header(look, 0, sectionLabel(look, "Current", { rule: true })),
+      this.header(look, SEPARATOR, div().w_full().h(1).bg(t.rule)),
       this.header(look, PROJECTS_HEADER, projects),
     ];
     if (!wide)
-      children.push(this.header(look, PROJECTS_HEADER + 1, h_flex().justify_end().child(this.addButton(look))));
+      children.push(
+        this.header(look, PROJECTS_HEADER + 1, h_flex().w_full().justify_end().child(this.addButton(look))),
+      );
     return children;
   }
 
@@ -663,7 +680,7 @@ export class WorkspacesBox {
       .overflow_hidden()
       .on_size_change((size, cx) => {
         const rows = Math.max(1, Math.floor(size.height / look.screenRow));
-        const width = Math.max(1, Math.floor(size.width / look.screenCell));
+        const width = Math.max(1, Math.floor((size.width - 18) / look.screenCell));
         if (rows === this.height && width === this.width) return;
         this.height = rows;
         this.width = width;

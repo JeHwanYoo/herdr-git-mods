@@ -346,6 +346,7 @@ class Session {
           .flex_1()
           .min_h(0)
           .min_w(0)
+          .p(6)
           .overflow_hidden()
           .on_size_change((size, cx) => {
             const cols = Math.floor(size.width / view.screenCell);

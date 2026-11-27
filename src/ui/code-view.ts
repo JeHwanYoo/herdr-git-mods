@@ -14,7 +14,7 @@ import {
 } from "./changes/document.ts";
 import { highlighter, languageName, type Token, tokenColor } from "./syntax.ts";
 import { type Color, cols, type Look, rows } from "./theme.ts";
-import { box, displayWidth, isChord, scrollbar } from "./widgets.ts";
+import { displayWidth, isChord, kbd, scrollbar } from "./widgets.ts";
 
 type CodeTone = "plain" | "added" | "removed" | "fold";
 export type ReviewSide = "Before" | "After";
@@ -42,11 +42,10 @@ interface Segment {
 type Emphasis = "focus" | "selection" | null;
 
 const HINT_KEYS: [string, string][] = [
-  ["y", " Yank · "],
-  ["h", " History · "],
-  ["Esc", " Cancel"],
+  ["y", "Yank"],
+  ["h", "History"],
+  ["Esc", "Cancel"],
 ];
-const HINT_WIDTH = HINT_KEYS.reduce((width, [key, label]) => width + displayWidth(key + label), 0) + 4;
 
 export function highlight(text: string, path: string): Token[] {
   return highlighter(path).line(text);
@@ -226,17 +225,32 @@ function selectionHint(look: Look, id: string, spec: ColumnSpec): Element | null
   const visibleLast = Math.min(hint.last, spec.scroll + spec.measure.rows - 1);
   if (visibleFirst > visibleLast) return null;
   const below = visibleLast - spec.scroll + 1;
-  const top = below + 3 <= spec.measure.rows ? below : Math.max(0, visibleFirst - spec.scroll - 3);
+  const top = below + 2 <= spec.measure.rows ? below : Math.max(0, visibleFirst - spec.scroll - 2);
   const { t } = look;
-  const keys = h_flex().h(look.row).whitespace_nowrap();
-  for (const [key, label] of HINT_KEYS)
-    keys.child(div().text_color(t.accent).font_weight(700).child(key)).child(div().text_color(t.hint).child(label));
-  return box(look, { id: `${id}-hint`, focused: true }, keys)
+  const keys = h_flex()
+    .id(`${id}-hint`)
     .absolute()
     .top(rows(look, top))
     .left(cols(look, 6))
-    .w(cols(look, HINT_WIDTH))
-    .h(rows(look, 3));
+    .h(look.row + 10)
+    .px(8)
+    .gap(8)
+    .items_center()
+    .bg(t.panel)
+    .border(1)
+    .border_color(t.lineStrong)
+    .rounded(2)
+    .shadow_md()
+    .whitespace_nowrap();
+  for (const [key, label] of HINT_KEYS)
+    keys.child(
+      h_flex()
+        .items_center()
+        .gap(4)
+        .child(kbd(look, key, true))
+        .child(div().text_color(t.secondary).child(label)),
+    );
+  return keys;
 }
 
 function scrollTrack(

@@ -723,7 +723,7 @@ export class ChangesTab implements TabView {
             .bottom(0)
             .left(look.cell)
             .w(look.cell)
-            .bg(t.hover)
+            .bg(t.accentSoft)
             .child(
               div()
                 .absolute()
@@ -743,11 +743,13 @@ export class ChangesTab implements TabView {
     if (!selection || selection.side !== side || !change) return null;
     const name = change.path.split("/").pop() ?? change.path;
     return h_flex()
-      .child(`${side} · `)
+      .text_size(Math.max(10, look.size - 2))
+      .font_weight(600)
+      .child(`${side.toUpperCase()} · `)
       .child(
         div()
-          .text_color(look.t.accent)
-          .font_weight(700)
+          .text_color(look.t.accentText)
+          .font_weight(600)
           .child(`${name}:${lineNumbersText(selection.lines)}`),
       );
   }
@@ -836,6 +838,7 @@ export class ChangesTab implements TabView {
     const left = v_flex()
       .min_h(0)
       .min_w(0)
+      .gap(6)
       .child(filesBox)
       .child(v_flex().flex_1().min_h(0).min_w(0).child(this.workspaces.render(look).flex_1()));
     const { before, after } = this.diffBoxes(look);
@@ -845,6 +848,7 @@ export class ChangesTab implements TabView {
       .size_full()
       .min_h(0)
       .min_w(0)
+      .gap(6)
       .on_key_down((event, cx) => this.comparisonKey(event, cx))
       .on_mouse_up("left", (_, cx) => {
         this.divider = null;

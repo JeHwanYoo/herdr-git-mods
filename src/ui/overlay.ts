@@ -1,7 +1,7 @@
 import { h_flex, InputState, v_flex } from "gpui-base";
 import { type AsyncContext, type Context, div, type Element, type FocusHandle, type KeyEvent } from "gpui-kit";
 import { type Color, cols, DIALOG, type Look, rows } from "./theme.ts";
-import { box, dialogFooter, dialogFrame, footerHint, ListViewport, padToWidth, textInput } from "./widgets.ts";
+import { dialogFooter, dialogFrame, footerHint, ListViewport, padToWidth, textInput } from "./widgets.ts";
 
 export type Tone = "text" | "hint" | "secondary" | "muted" | "accent" | "warning" | "error" | "success";
 
@@ -76,7 +76,6 @@ export interface CustomSpec {
 export type DialogSpec = PickerSpec | ConfirmSpec | FormSpec | CustomSpec;
 
 const PICKER_ROWS = 20;
-const FIELD_ROWS = 3;
 
 function toneColor(look: Look, tone: Tone): Color {
   const { t } = look;
@@ -263,7 +262,20 @@ export class Overlay {
   private searchBox(look: Look): Element | null {
     const [input] = this.inputs;
     if (!input) return null;
-    return box(look, { id: "git-dialog-search", title: "Search" }, h_flex().h(look.row).child(textInput(look, input)));
+    const { t } = look;
+    return h_flex()
+      .id("git-dialog-search")
+      .flex_none()
+      .h(look.row + 8)
+      .px(8)
+      .gap(6)
+      .items_center()
+      .bg(t.background)
+      .border(1)
+      .border_color(t.accent)
+      .rounded(2)
+      .child(div().flex_none().text_color(t.accentText).font_weight(600).child("/"))
+      .child(textInput(look, input));
   }
 
   private picker(look: Look, spec: PickerSpec): Element {
@@ -273,19 +285,24 @@ export class Overlay {
     const columns = spec.columns;
     const query = this.query();
     const footer = typeof spec.footer === "function" ? spec.footer(query, all.length) : (spec.footer ?? "");
-    const body = v_flex().min_w(0);
+    const body = v_flex().min_w(0).gap(6);
     const search = this.searchBox(look);
     if (search) body.child(search);
     if (columns)
       body.child(
-        div()
+        h_flex()
           .flex_none()
-          .h(look.row)
-          .bg(t.header)
-          .text_color(t.accent)
-          .font_weight(700)
+          .h(look.row + 4)
+          .px(4)
+          .items_center()
+          .bg(t.background)
+          .border_b(1)
+          .border_color(t.rule)
+          .text_size(Math.max(10, look.size - 2))
+          .text_color(t.hint)
+          .font_weight(600)
           .whitespace_nowrap()
-          .child(`  ${padToWidth(columns.label, columns.width)}${columns.status}`),
+          .child(`  ${padToWidth(columns.label.toUpperCase(), columns.width)}${columns.status.toUpperCase()}`),
       );
     body.child(
       v_flex()
@@ -332,26 +349,44 @@ export class Overlay {
   private confirmBody(look: Look, spec: ConfirmSpec): Element {
     return v_flex()
       .min_w(0)
+      .gap(6)
       .child(lines(look, spec.lines))
       .child(this.hint(look, spec.hint ?? ""))
       .child(this.footer(look, spec.primary ?? "[Enter] Run", spec.secondary ?? "[Esc] Cancel"));
   }
 
   private form(look: Look, spec: FormSpec): Element {
+    const { t } = look;
     const body = v_flex()
       .min_w(0)
+      .gap(6)
       .child(lines(look, spec.lines ?? []));
     for (const [index, field] of spec.fields.entries()) {
       const input = this.inputs[index];
       if (input)
         body.child(
-          box(
-            look,
-            { id: `git-dialog-field-${index}`, title: field.label },
-            h_flex().h(look.row).child(textInput(look, input)),
-          )
-            .h(rows(look, FIELD_ROWS))
-            .flex_none(),
+          v_flex()
+            .id(`git-dialog-field-${index}`)
+            .flex_none()
+            .gap(4)
+            .child(
+              div()
+                .text_size(Math.max(10, look.size - 2))
+                .font_weight(600)
+                .text_color(t.secondary)
+                .child(field.label.toUpperCase()),
+            )
+            .child(
+              h_flex()
+                .h(look.row + 8)
+                .px(8)
+                .items_center()
+                .bg(t.background)
+                .border(1)
+                .border_color(t.lineStrong)
+                .rounded(2)
+                .child(textInput(look, input)),
+            ),
         );
     }
     return body
@@ -377,7 +412,11 @@ export class Overlay {
     const title =
       typeof spec.title === "string"
         ? spec.title
-        : div().text_color(toneColor(look, spec.title.tone)).font_weight(700).child(spec.title.text);
+        : div()
+            .text_size(Math.max(10, look.size - 2))
+            .text_color(toneColor(look, spec.title.tone))
+            .font_weight(600)
+            .child(spec.title.text.toUpperCase());
     const width = spec.width ?? (spec.kind === "picker" ? DIALOG.wide : DIALOG.medium);
     const frame = dialogFrame(look, { id: "git-dialog", title, width }, this.body(look, spec))
       .track_focus(this.handle)
@@ -386,6 +425,8 @@ export class Overlay {
       .id("git-dialog-layer")
       .absolute()
       .inset_0()
+      .p(16)
+      .bg(look.t.scrim)
       .items_center()
       .justify_center()
       .on_mouse_down("left", (_, cx) => cx.stop_propagation())
